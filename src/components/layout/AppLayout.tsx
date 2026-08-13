@@ -61,31 +61,14 @@ const menuItems = [
     ]
   },
   {
-    title: "Comandas",
-    icon: ClipboardList,
-    id: "comandas",
+    title: "Estoque",
+    icon: Warehouse,
+    id: "estoque-produtos",
     submenu: [
       {
-        title: "Histórico de Comandas",
+        title: "Histórico de Movimentações",
         icon: History,
-        id: "historico-comandas"
-      }
-    ]
-  },
-  {
-    title: "Delivery",
-    icon: ShoppingCart,
-    id: "pedidos",
-    submenu: [
-      {
-        title: "Kanban de Pedidos",
-        icon: ClipboardList,
-        id: "pedidos"
-      },
-      {
-        title: "Histórico",
-        icon: History,
-        id: "historico"
+        id: "historico-movimentacoes"
       }
     ]
   },
@@ -98,23 +81,6 @@ const menuItems = [
         title: "Categorias",
         icon: Layers,
         id: "categorias"
-      }
-    ]
-  },
-  {
-    title: "Funcionários",
-    icon: Users,
-    id: "funcionarios"
-  },
-  {
-    title: "Estoque de Produtos",
-    icon: Warehouse,
-    id: "estoque-produtos",
-    submenu: [
-      {
-        title: "Histórico de Movimentações",
-        icon: History,
-        id: "historico-movimentacoes"
       }
     ]
   },
@@ -156,19 +122,9 @@ const menuItems = [
     ]
   },
   {
-    title: "Estabelecimentos",
-    icon: Building2,
-    id: "estabelecimentos"
-  },
-  {
     title: "Usuários",
     icon: UserCog,
     id: "usuarios"
-  },
-  {
-    title: "Auditoria",
-    icon: ScrollText,
-    id: "auditoria"
   },
   {
     title: "Métricas",
@@ -219,16 +175,10 @@ export default function AppLayout({ children, onLogout, onToggleView, currentPag
       
       // Verificar permissão para cada item
       if (item.id === 'pdv') return permissoes.podeAcessarPDV
-      if (item.id === 'comandas') return permissoes.podeAcessarComandas
-      if (item.id === 'pedidos') return permissoes.podeAcessarPedidos
-      if (item.id === 'produtos') return permissoes.podeAcessarProdutos
-      if (item.id === 'funcionarios') return permissoes.podeAcessarFuncionarios
       if (item.id === 'estoque-produtos') return permissoes.podeAcessarEstoque
+      if (item.id === 'produtos') return permissoes.podeAcessarProdutos
       if (item.id === 'configuracoes') return permissoes.podeAcessarConfiguracoes
-      if (item.id === 'analytics') return permissoes.podeAcessarAnalytics
-      if (item.id === 'estabelecimentos') return podeAcessarPagina('estabelecimentos')
       if (item.id === 'usuarios') return podeAcessarPagina('usuarios')
-      if (item.id === 'auditoria') return podeAcessarPagina('auditoria')
       if (item.id === 'metricas') return podeAcessarPagina('metricas')
       
       return false
@@ -241,13 +191,6 @@ export default function AppLayout({ children, onLogout, onToggleView, currentPag
           }
           if (item.id === 'estoque-produtos' && subitem.id === 'historico-movimentacoes') {
             return permissoes.podeAcessarEstoque // Mesma permissão do Estoque
-          }
-          if (item.id === 'comandas' && subitem.id === 'historico-comandas') {
-            return permissoes.podeAcessarHistoricoComandas
-          }
-          if (item.id === 'pedidos') {
-            if (subitem.id === 'pedidos') return permissoes.podeAcessarPedidos
-            if (subitem.id === 'historico') return permissoes.podeAcessarHistorico
           }
           if (item.id === 'produtos') {
             if (subitem.id === 'categorias') return permissoes.podeAcessarCategorias
@@ -265,16 +208,9 @@ export default function AppLayout({ children, onLogout, onToggleView, currentPag
     })
   }, [
     permissoes.podeAcessarPDV,
-    permissoes.podeAcessarComandas,
-    permissoes.podeAcessarPedidos,
     permissoes.podeAcessarProdutos,
-    permissoes.podeAcessarFuncionarios,
     permissoes.podeAcessarEstoque,
     permissoes.podeAcessarConfiguracoes,
-    permissoes.podeAcessarAnalytics,
-    permissoes.podeAcessarHistoricoComandas,
-    permissoes.podeAcessarHistorico,
-    permissoes.podeAcessarAguardandoPagamento,
     permissoes.podeAcessarCategorias,
     podeAcessarPagina
   ])

@@ -66,19 +66,11 @@ const menuItems: MenuItem[] = [
     ]
   },
   { 
-    name: "Comandas", 
-    id: "comandas", 
-    icon: ClipboardList,
+    name: "Estoque", 
+    id: "estoque-produtos", 
+    icon: Archive,
     submenu: [
-      { name: "Histórico", id: "historico-comandas", icon: History }
-    ]
-  },
-  { 
-    name: "Pedidos", 
-    id: "pedidos", 
-    icon: ShoppingCart,
-    submenu: [
-      { name: "Histórico", id: "historico", icon: History }
+      { name: "Histórico de Movimentações", id: "historico-movimentacoes", icon: History }
     ]
   },
   { 
@@ -86,13 +78,9 @@ const menuItems: MenuItem[] = [
     id: "produtos", 
     icon: Package,
     submenu: [
-      { name: "Sabores", id: "sabores", icon: Utensils },
       { name: "Categorias", id: "categorias", icon: Tags }
     ]
   },
-  { name: "Funcionários", id: "funcionarios", icon: UserCheck },
-  { name: "Estoque", id: "estoque", icon: Archive },
-  { name: "Métricas", id: "metricas", icon: TrendingUp },
   { 
     name: "Configurações", 
     id: "configuracoes", 
@@ -106,9 +94,8 @@ const menuItems: MenuItem[] = [
       { name: "Impressão", id: "configuracoes-impressao", icon: Printer }
     ]
   },
-  { name: "Estabelecimentos", id: "estabelecimentos", icon: Building2 },
   { name: "Usuários", id: "usuarios", icon: UserCog },
-  { name: "Auditoria", id: "auditoria", icon: ScrollText },
+  { name: "Métricas", id: "metricas", icon: TrendingUp }
 ]
 
 interface MobileAdminHeaderProps {
@@ -132,23 +119,14 @@ export default function MobileAdminHeader({ onLogout, onToggleView, currentPage 
         return true
       case 'pdv':
         return permissoes.podeAcessarPDV
-      case 'metricas':
-        return podeAcessarPagina('metricas')
-      case 'comandas':
-        return permissoes.podeAcessarComandas
-      case 'pedidos':
-        return permissoes.podeAcessarPedidos
+      case 'estoque-produtos':
+        return permissoes.podeAcessarEstoque
       case 'produtos':
         return permissoes.podeAcessarProdutos
-      case 'funcionarios':
-        return permissoes.podeAcessarFuncionarios
-      case 'estoque':
-        return permissoes.podeAcessarEstoque
       case 'configuracoes':
         return permissoes.podeAcessarConfiguracoes
-      case 'estabelecimentos':
       case 'usuarios':
-      case 'auditoria':
+      case 'metricas':
         return podeAcessarPagina(item.id)
       default:
         return false
