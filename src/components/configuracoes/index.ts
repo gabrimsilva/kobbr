@@ -1,0 +1,6 @@
+export { ConfiguracoesGerais } from './ConfiguracoesGerais'
+export { HorarioFuncionamento } from './HorarioFuncionamento'
+export { FormasPagamentoConfig } from './FormasPagamentoConfig'
+export { ConfiguracoesCheckout } from './ConfiguracoesCheckout'
+export { ConfiguracoesVisuais } from './ConfiguracoesVisuais'
+export { ConfiguracoesNotificacao } from './ConfiguracoesNotificacao'

@@ -1,0 +1,458 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+* {
+  font-family: 'Poppins', sans-serif;
+}
+
+/* 
+  ============================================
+  SISTEMA DE CORES - GUIA DE CUSTOMIZAÇÃO
+  ============================================
+  
+  Este arquivo centraliza todas as cores do sistema.
+  Para alterar cores, edite as variáveis CSS abaixo:
+  
+  ADMIN (Sistema Administrativo):
+  - Botões principais: --primary
+  - Sidebar fundo: --sidebar
+  - Sidebar item ativo: --sidebar-primary
+  - Sidebar hover: --sidebar-accent
+  - Botões destrutivos: --destructive
+  
+  VARIÁVEIS SEMÂNTICAS (mais descritivas):
+  - --admin-btn-primary-bg: Botões principais do admin
+  - --admin-sidebar-bg: Fundo da sidebar
+  - --admin-sidebar-active-bg: Item ativo na sidebar
+  - --admin-btn-destructive-bg: Botões de excluir/limpar
+  
+  Para mudar uma cor globalmente:
+  1. Encontre a variável correspondente
+  2. Altere o valor oklch()
+  3. A mudança será aplicada em todo o sistema
+  
+  ============================================
+*/
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  /* === CONFIGURAÇÕES GERAIS === */
+  --radius: 0.875rem; /* Botões mais arredondados para visual mais suave */
+
+  /* === CORES BASE DO SISTEMA === */
+  --background: oklch(0.985 0.004 270);
+  /* branco levemente índigo - sóbrio */
+  --foreground: oklch(0.28 0.02 270);
+  /* cinza escuro com toque índigo */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.28 0.02 270);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.28 0.02 270);
+
+  /* === CORES PRIMÁRIAS (Botões Admin) === */
+  --primary: oklch(0.45 0.14 270);
+  /* índigo profundo - Botões principais do admin */
+  --primary-foreground: oklch(1 0 0);
+
+  /* === CORES SECUNDÁRIAS === */
+  --secondary: oklch(0.96 0.008 270);
+  /* cinza índigo muito claro */
+  --secondary-foreground: oklch(0.40 0.06 270);
+
+  /* === CORES DE ESTADO === */
+  --muted: oklch(0.96 0.006 270);
+  /* cinza muito claro neutro */
+  --muted-foreground: oklch(0.50 0.02 270);
+  --accent: oklch(0.96 0.008 270);
+  /* cinza índigo muito claro */
+  --accent-foreground: oklch(0.25 0.02 270);
+
+  /* === CORES DESTRUTIVAS (Botões de excluir/limpar) === */
+  --destructive: oklch(0.577 0.245 27.325);
+  /* vermelho */
+
+  /* === BORDAS E INPUTS === */
+  --border: oklch(0.90 0.008 270);
+  /* borda suave cinza índigo */
+  --input: oklch(0.90 0.008 270);
+  --ring: oklch(0.45 0.14 270);
+  /* anel de foco índigo */
+
+  /* === CORES DE GRÁFICOS === */
+  --chart-1: oklch(0.45 0.14 270);
+  /* índigo profundo */
+  --chart-2: oklch(0.55 0.12 255);
+  /* azul índigo */
+  --chart-3: oklch(0.72 0.13 80);
+  /* dourado/âmbar - acento */
+  --chart-4: oklch(0.50 0.10 300);
+  /* violeta sóbrio */
+  --chart-5: oklch(0.55 0.06 250);
+  /* azul acinzentado */
+
+  /* === SIDEBAR ADMIN === */
+  --sidebar: oklch(0.96 0.008 270);
+  /* cinza índigo muito claro - Fundo da sidebar */
+  --sidebar-foreground: oklch(0.35 0.03 270);
+  /* Texto da sidebar - cinza escuro */
+  --sidebar-primary: oklch(0.45 0.14 270);
+  /* índigo profundo - Item ativo */
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.92 0.02 270);
+  /* cinza índigo claro - Hover */
+  --sidebar-accent-foreground: oklch(0.35 0.03 270);
+  --sidebar-border: oklch(0.87 0.03 270);
+  /* cinza índigo - Bordas */
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* === VARIÁVEIS SEMÂNTICAS CUSTOMIZADAS === */
+  /* Admin - Botões */
+  --admin-btn-primary-bg: var(--primary);
+  --admin-btn-primary-fg: var(--primary-foreground);
+  --admin-btn-destructive-bg: var(--destructive);
+
+  /* Admin - Sidebar */
+  --admin-sidebar-bg: var(--sidebar);
+  --admin-sidebar-text: var(--sidebar-foreground);
+  --admin-sidebar-text-hover: var(--sidebar-primary-foreground);
+  --admin-sidebar-active-bg: var(--sidebar-primary);
+  --admin-sidebar-hover-bg: var(--sidebar-accent);
+  --admin-sidebar-border: var(--sidebar-border);
+
+  /* === CORES DE PREÇOS === */
+  /* Cor padrão para exibição de preços de produtos no admin */
+  --price-color: oklch(0.45 0.13 270);
+  /* índigo profundo elegante */
+  /* Cor para exibição de preços nas páginas públicas (delivery/cliente) */
+  --price-color-cliente: oklch(0.42 0.14 270);
+  /* índigo mais intenso */
+  --color-price: var(--price-color);
+  --color-price-cliente: var(--price-color-cliente);
+}
+
+.dark {
+  /* === CORES BASE DO SISTEMA (Dark Mode) === */
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+
+  /* === CORES PRIMÁRIAS (Dark Mode) === */
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+
+  /* === CORES SECUNDÁRIAS (Dark Mode) === */
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+
+  /* === CORES DE ESTADO (Dark Mode) === */
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+
+  /* === CORES DESTRUTIVAS (Dark Mode) === */
+  --destructive: oklch(0.704 0.191 22.216);
+
+  /* === BORDAS E INPUTS (Dark Mode) === */
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+
+  /* === CORES DE GRÁFICOS (Dark Mode) === */
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+
+  /* === SIDEBAR ADMIN (Dark Mode) === */
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Sombras mais suaves e elegantes */
+  .shadow-sm {
+    box-shadow: 0 1px 3px 0 rgb(148 163 184 / 0.1), 0 1px 2px -1px rgb(148 163 184 / 0.1);
+  }
+
+  .shadow {
+    box-shadow: 0 4px 6px -1px rgb(148 163 184 / 0.15), 0 2px 4px -2px rgb(148 163 184 / 0.15);
+  }
+
+  .shadow-md {
+    box-shadow: 0 6px 12px -2px rgb(148 163 184 / 0.2), 0 3px 6px -3px rgb(148 163 184 / 0.2);
+  }
+
+  .shadow-lg {
+    box-shadow: 0 10px 20px -3px rgb(148 163 184 / 0.25), 0 4px 8px -4px rgb(148 163 184 / 0.25);
+  }
+}
+
+/* Scrollbar customizada apenas para o body principal */
+body {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(203 213 225) rgb(248 250 252);
+  /* azul ardósia suave */
+}
+
+body::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+body::-webkit-scrollbar-track {
+  background: rgb(248 250 252);
+  /* fundo azulado claro */
+  border-radius: 5px;
+}
+
+body::-webkit-scrollbar-thumb {
+  background: rgb(203 213 225);
+  /* azul ardósia suave */
+  border-radius: 5px;
+  border: 2px solid rgb(248 250 252);
+  transition: background 0.3s ease;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+  background: rgb(148 163 184);
+  /* azul ardósia médio */
+}
+
+body::-webkit-scrollbar-corner {
+  background: rgb(248 250 252);
+}
+
+/* Utilitários para truncar texto */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Esconder scrollbar */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Scrollbar customizada para sidebar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(51 65 85) rgb(15 23 42);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: rgb(15 23 42);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgb(51 65 85);
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgb(71 85 105);
+}
+
+.scrollbar-thumb-slate-700 {
+  scrollbar-color: rgb(51 65 85) transparent;
+}
+
+.scrollbar-track-slate-900 {
+  scrollbar-color: transparent rgb(15 23 42);
+}
+
+/* Garantir scroll no Sheet mobile */
+[data-radix-scroll-area-viewport] {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Scroll suave no mobile */
+@media (max-width: 768px) {
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Background Patterns */
+body.bg-pattern-hideout {
+  background: linear-gradient(45deg, rgba(186, 230, 253, 0.12) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(186, 230, 253, 0.12) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(186, 230, 253, 0.12) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(186, 230, 253, 0.12) 75%) !important;
+  background-size: 20px 20px !important;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px !important;
+  background-color: #f8fafc !important;
+  /* fundo azulado muito claro */
+  background-attachment: fixed !important;
+}
+
+body.bg-pattern-i-like-food {
+  background-image: url("/patterns/i-like-food.svg") !important;
+  background-size: 60px 60px !important;
+  background-repeat: repeat !important;
+  background-color: #f8fafc !important;
+  /* fundo azulado muito claro */
+  background-attachment: fixed !important;
+}
+
+/* Garantir que o conteúdo principal fique por cima dos patterns */
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Bento Grid para avaliações */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Estilos para os sliders de configuração */
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos customizados para cards do dashboard - tema sereno */
+.dashboard-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.98) 100%);
+  border: 1px solid rgba(186, 230, 253, 0.3);
+  box-shadow: 0 4px 12px rgba(148, 163, 184, 0.15);
+  transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+  box-shadow: 0 8px 20px rgba(148, 163, 184, 0.25);
+  transform: translateY(-2px);
+}
+
+/* Cards com cores específicas - tons pastéis serenos */
+.card-pink {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  border-color: #7dd3fc;
+}
+
+.card-purple {
+  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+  border-color: #c4b5fd;
+}
+
+.card-rose {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-color: #93c5fd;
+}
+
+.card-lavender {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border-color: #ddd6fe;
+}

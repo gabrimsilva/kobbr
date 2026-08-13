@@ -1,0 +1,51 @@
+<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad-circle" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#0066ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad-leaf" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0066ff;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad-crescent1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0066ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad-crescent2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#c026d3;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Circle -->
+  <circle cx="150" cy="150" r="140" fill="none" stroke="url(#grad-circle)" stroke-width="4" opacity="0.95"/>
+
+  <!-- Top Leaf -->
+  <path d="M 150 60 Q 165 70 160 90 Q 150 85 145 75 Q 142 68 150 60" fill="url(#grad-leaf)" opacity="0.9"/>
+
+  <!-- Left Crescent (Top) -->
+  <path d="M 110 95 Q 95 100 95 115 Q 110 110 115 100 Z" fill="url(#grad-crescent1)" opacity="0.85"/>
+
+  <!-- Left Crescent (Bottom) -->
+  <path d="M 100 130 Q 80 145 90 165 Q 110 150 115 135 Z" fill="url(#grad-crescent1)" opacity="0.75"/>
+
+  <!-- Center Crescent (Left) -->
+  <path d="M 125 115 Q 110 125 115 145 Q 135 135 135 120 Z" fill="url(#grad-crescent1)" opacity="0.8"/>
+
+  <!-- Center Crescent (Right) -->
+  <path d="M 165 120 Q 180 115 185 135 Q 170 145 160 135 Z" fill="url(#grad-crescent2)" opacity="0.85"/>
+
+  <!-- Right Crescent (Top) -->
+  <path d="M 185 100 Q 205 95 210 115 Q 195 115 185 105 Z" fill="url(#grad-crescent2)" opacity="0.8"/>
+
+  <!-- Right Crescent (Bottom) -->
+  <path d="M 195 135 Q 220 140 215 165 Q 200 155 190 145 Z" fill="url(#grad-crescent2)" opacity="0.75"/>
+
+  <!-- Texto "Videira" -->
+  <text x="150" y="225" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#000000">Videira</text>
+  
+  <!-- Texto "IGREJA EM CÉLULAS" -->
+  <text x="150" y="248" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="500" text-anchor="middle" fill="#666666" letter-spacing="1">IGREJA EM CÉLULAS</text>
+</svg>

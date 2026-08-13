@@ -1,0 +1,43 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# QZ Tray certificates (NEVER commit these!)
+*.pem
+*certificate*.txt
+*private*key*
+digital-certificate.txt
+private-key.pem
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Kiro MCP settings (contém access token do Supabase — NÃO commitar)
+.kiro/settings/mcp.json
+
+# Artefato de deploy gerado localmente
+deploy_dist.zip
+_diag_hg*.ps1

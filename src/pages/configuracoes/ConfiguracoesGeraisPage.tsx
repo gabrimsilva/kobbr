@@ -1,0 +1,184 @@
+import { useState, useEffect } from "react"
+import { ActionButton } from "@/components/ui/action-button"
+import { Save, Loader2, CheckCircle, AlertCircle } from "lucide-react"
+import { configuracaoService } from "@/services"
+import { useFormatacao } from "@/hooks/useFormatacao"
+import { ConfiguracoesGerais } from "@/components/configuracoes/ConfiguracoesGerais"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+
+export default function ConfiguracoesGeraisPage() {
+  const [config, setConfig] = useState({
+    nomeEstabelecimento: '',
+    endereco: '',
+    cep: '',
+    telefone: '',
+    telefoneFixo: '',
+    whatsapp: '',
+    email: ''
+  })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { formatarTelefone } = useFormatacao()
+
+  useEffect(() => {
+    carregarConfiguracoes()
+  }, [])
+
+  const carregarConfiguracoes = async () => {
+    try {
+      setLoading(true)
+      const configuracoes = await configuracaoService.buscarTodas()
+
+      const configCarregada = {
+        nomeEstabelecimento: 'Loja de Cosméticos',
+        endereco: 'Rua das Flores, 123 - Centro',
+        cep: '',
+        telefone: '(11) 99999-9999',
+        telefoneFixo: '',
+        whatsapp: '(11) 99999-9999',
+        email: 'contato@loja.com'
+      }
+
+      configuracoes.forEach(cfg => {
+        switch (cfg.chave) {
+          case 'nome_loja':
+            configCarregada.nomeEstabelecimento = cfg.valor
+            break
+          case 'endereco_loja':
+            configCarregada.endereco = cfg.valor
+            break
+          case 'cep_loja':
+            configCarregada.cep = cfg.valor
+            break
+          case 'telefone_loja':
+            configCarregada.telefone = formatarTelefone(cfg.valor)
+            break
+          case 'telefone_fixo_loja':
+            configCarregada.telefoneFixo = formatarTelefone(cfg.valor)
+            break
+          case 'whatsapp_loja':
+            configCarregada.whatsapp = formatarTelefone(cfg.valor)
+            break
+          case 'email_loja':
+            configCarregada.email = cfg.valor
+            break
+        }
+      })
+
+      setConfig(configCarregada)
+    } catch (err) {
+      console.error('Erro ao carregar configurações:', err)
+      setError('Erro ao carregar configurações')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSalvar = async () => {
+    try {
+      setSaving(true)
+      setError(null)
+
+      const configuracoesParaSalvar = [
+        { chave: 'nome_loja', valor: config.nomeEstabelecimento, categoria: 'loja', descricao: 'Nome da loja' },
+        { chave: 'endereco_loja', valor: config.endereco, categoria: 'loja', descricao: 'Endereço da loja' },
+        { chave: 'cep_loja', valor: config.cep, categoria: 'loja', descricao: 'CEP da loja' },
+        { chave: 'telefone_loja', valor: config.telefone, categoria: 'loja', descricao: 'Telefone da loja' },
+        { chave: 'telefone_fixo_loja', valor: config.telefoneFixo, categoria: 'loja', descricao: 'Telefone fixo da loja' },
+        { chave: 'whatsapp_loja', valor: config.whatsapp, categoria: 'loja', descricao: 'WhatsApp da loja' },
+        { chave: 'email_loja', valor: config.email, categoria: 'loja', descricao: 'Email da loja' }
+      ]
+
+      for (const cfg of configuracoesParaSalvar) {
+        await configuracaoService.salvar(cfg.chave, cfg.valor, cfg.descricao, undefined, cfg.categoria)
+      }
+
+      setShowSuccessDialog(true)
+    } catch (err) {
+      console.error('Erro ao salvar configurações:', err)
+      setError('Erro ao salvar configurações')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleConfigChange = (field: string, value: string) => {
+    setConfig({ ...config, [field]: value })
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Carregando configurações...</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold">Informações Gerais</h2>
+        <p className="text-muted-foreground">
+          Configure os dados básicos do estabelecimento
+        </p>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          <AlertCircle className="h-5 w-5" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <ConfiguracoesGerais
+        nomeEstabelecimento={config.nomeEstabelecimento}
+        endereco={config.endereco}
+        cep={config.cep}
+        telefone={config.telefone}
+        telefoneFixo={config.telefoneFixo}
+        whatsapp={config.whatsapp}
+        email={config.email}
+        onChange={handleConfigChange}
+      />
+
+      <div className="flex justify-end gap-2">
+        <ActionButton onClick={handleSalvar} loading={saving}>
+          <Save className="h-4 w-4 mr-2" />
+          Salvar Configurações
+        </ActionButton>
+      </div>
+
+      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              Sucesso!
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Configurações salvas com sucesso!
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowSuccessDialog(false)}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}

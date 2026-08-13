@@ -1,0 +1,588 @@
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import {
+  Package,
+  Clock,
+  Star,
+  TrendingUp,
+  Truck,
+  ClipboardList,
+  CalendarIcon
+} from "lucide-react"
+import { format } from "date-fns"
+import { ptBR } from "date-fns/locale"
+import { cn } from "@/lib/utils"
+import { pedidoService, produtoService, supabase, getEstabelecimentoAtivo } from "@/services"
+
+interface DashboardStats {
+  pedidosPendentes: number
+  pedidosFinalizadosDelivery: number
+  pedidosFinalizadosComandas: number
+  produtosCadastrados: number
+  avaliacaoMedia: number
+  totalAvaliacoes: number
+}
+
+interface ProdutoFavorito {
+  nome: string
+  quantidade: number
+  categoria: string
+  imagem?: string
+}
+
+export default function Dashboard() {
+  const [stats, setStats] = useState<DashboardStats>({
+    pedidosPendentes: 0,
+    pedidosFinalizadosDelivery: 0,
+    pedidosFinalizadosComandas: 0,
+    produtosCadastrados: 0,
+    avaliacaoMedia: 0,
+    totalAvaliacoes: 0
+  })
+  const [produtosFavoritos, setProdutosFavoritos] = useState<ProdutoFavorito[]>([])
+  const [loading, setLoading] = useState(true)
+  const [periodo, setPeriodo] = useState<string>("hoje")
+  const [dataCustom, setDataCustom] = useState<Date | undefined>(undefined)
+
+  useEffect(() => {
+    carregarDados()
+  }, [periodo, dataCustom])
+
+  const getPeriodoTexto = () => {
+    switch (periodo) {
+      case "hoje":
+        return "Hoje"
+      case "7dias":
+        return "Últimos 7 dias"
+      case "15dias":
+        return "Últimos 15 dias"
+      case "30dias":
+        return "Últimos 30 dias"
+      case "90dias":
+        return "Últimos 90 dias"
+      case "tudo":
+        return "Todo o período"
+      case "custom":
+        return dataCustom ? format(dataCustom, "dd/MM/yyyy", { locale: ptBR }) : "Data específica"
+      default:
+        return "Hoje"
+    }
+  }
+
+  const getDataRange = () => {
+    const hoje = new Date()
+    hoje.setHours(0, 0, 0, 0)
+    const fim = new Date()
+    fim.setHours(23, 59, 59, 999)
+
+    if (periodo === "custom" && dataCustom) {
+      const dataInicio = new Date(dataCustom)
+      dataInicio.setHours(0, 0, 0, 0)
+      const dataFim = new Date(dataCustom)
+      dataFim.setHours(23, 59, 59, 999)
+      return { inicio: dataInicio, fim: dataFim }
+    }
+
+    switch (periodo) {
+      case "hoje":
+        return { inicio: hoje, fim }
+      case "7dias":
+        const seteDiasAtras = new Date(hoje)
+        seteDiasAtras.setDate(hoje.getDate() - 7)
+        return { inicio: seteDiasAtras, fim }
+      case "15dias":
+        const quinzeDiasAtras = new Date(hoje)
+        quinzeDiasAtras.setDate(hoje.getDate() - 15)
+        return { inicio: quinzeDiasAtras, fim }
+      case "30dias":
+        const trintaDiasAtras = new Date(hoje)
+        trintaDiasAtras.setDate(hoje.getDate() - 30)
+        return { inicio: trintaDiasAtras, fim }
+      case "90dias":
+        const noventaDiasAtras = new Date(hoje)
+        noventaDiasAtras.setDate(hoje.getDate() - 90)
+        return { inicio: noventaDiasAtras, fim }
+      case "tudo":
+        // Retorna desde 2020 até hoje (ou uma data bem antiga)
+        const inicioTudo = new Date(2020, 0, 1)
+        return { inicio: inicioTudo, fim }
+      default:
+        return { inicio: hoje, fim }
+    }
+  }
+
+  const carregarDados = async () => {
+    try {
+      setLoading(true)
+      const { inicio, fim } = getDataRange()
+
+      // Carregar dados em paralelo
+      const [
+        pedidosAtivos,
+        { delivery, comandas },
+        produtos,
+        produtosFavoritosData,
+        { media, total }
+      ] = await Promise.all([
+        carregarPedidosPendentes(),
+        carregarPedidosFinalizados(inicio, fim),
+        carregarProdutosCadastrados(),
+        carregarProdutosFavoritos(inicio, fim),
+        carregarAvaliacaoMedia()
+      ])
+
+      setStats({
+        pedidosPendentes: pedidosAtivos,
+        pedidosFinalizadosDelivery: delivery,
+        pedidosFinalizadosComandas: comandas,
+        produtosCadastrados: produtos,
+        avaliacaoMedia: media,
+        totalAvaliacoes: total
+      })
+
+      setProdutosFavoritos(produtosFavoritosData)
+
+    } catch (error) {
+      console.error('Erro ao carregar dados do dashboard:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const carregarPedidosPendentes = async (): Promise<number> => {
+    try {
+      const pedidos = await pedidoService.buscarTodos()
+      // Contar pedidos que não estão finalizados
+      const pendentes = pedidos.filter(p =>
+        !['Finalizado', 'Entregue', 'Retirado', 'Cancelado'].includes(p.status)
+      )
+      return pendentes.length
+    } catch (error) {
+      console.error('Erro ao carregar pedidos pendentes:', error)
+      return 0
+    }
+  }
+
+  const carregarPedidosFinalizados = async (inicio: Date, fim: Date): Promise<{ delivery: number, comandas: number }> => {
+    try {
+      const estabId = getEstabelecimentoAtivo()
+      // Buscar pedidos delivery do histórico
+      let deliveryQuery = supabase
+        .from('historico_geral')
+        .select('id')
+        .gte('criado_em', inicio.toISOString())
+        .lte('criado_em', fim.toISOString())
+      if (estabId) deliveryQuery = deliveryQuery.eq('estabelecimento_id', estabId)
+      const { data: deliveryData, error: deliveryError } = await deliveryQuery
+
+      if (deliveryError) throw deliveryError
+
+      // Buscar vendas PDV (tabela sales, tipo PDV)
+      let pdvQuery = supabase
+        .from('sales')
+        .select('id')
+        .eq('sale_type', 'PDV')
+        .gte('created_at', inicio.toISOString())
+        .lte('created_at', fim.toISOString())
+      if (estabId) pdvQuery = pdvQuery.eq('estabelecimento_id', estabId)
+      const { data: pdvData, error: pdvError } = await pdvQuery
+
+      if (pdvError) throw pdvError
+
+      return {
+        delivery: deliveryData?.length || 0,
+        comandas: pdvData?.length || 0
+      }
+    } catch (error) {
+      console.error('Erro ao carregar pedidos finalizados:', error)
+      return { delivery: 0, comandas: 0 }
+    }
+  }
+
+  const carregarProdutosCadastrados = async (): Promise<number> => {
+    try {
+      const produtos = await produtoService.buscarTodos()
+      return produtos.filter(p => p.ativo).length
+    } catch (error) {
+      console.error('Erro ao carregar produtos:', error)
+      return 0
+    }
+  }
+
+  const carregarAvaliacaoMedia = async (): Promise<{ media: number, total: number }> => {
+    try {
+      const estabId = getEstabelecimentoAtivo()
+      let query = supabase
+        .from('avaliacoes')
+        .select('estrelas')
+        .eq('aprovada', true)
+      if (estabId) query = query.eq('estabelecimento_id', estabId)
+      const { data, error } = await query
+
+      if (error) throw error
+
+      if (!data || data.length === 0) {
+        return { media: 0, total: 0 } // Sem avaliações ainda
+      }
+
+      const soma = data.reduce((acc, avaliacao) => acc + avaliacao.estrelas, 0)
+      const media = soma / data.length
+
+      return {
+        media: parseFloat(media.toFixed(1)),
+        total: data.length
+      }
+    } catch (error) {
+      console.error('Erro ao carregar avaliação média:', error)
+      return { media: 0, total: 0 }
+    }
+  }
+
+  const carregarProdutosFavoritos = async (inicio: Date, fim: Date): Promise<ProdutoFavorito[]> => {
+    try {
+      // Buscar pedidos do período (ativos e histórico), excluindo cancelados
+      const estabId = getEstabelecimentoAtivo()
+      let qAtivos = supabase
+        .from('pedidos')
+        .select('itens, criado_em, status, cancelado')
+        .gte('criado_em', inicio.toISOString())
+        .lte('criado_em', fim.toISOString())
+        .neq('status', 'Cancelado')
+        .neq('cancelado', true)
+      if (estabId) qAtivos = qAtivos.eq('estabelecimento_id', estabId)
+      let qHistorico = supabase
+        .from('historico_geral')
+        .select('itens, criado_em, status')
+        .gte('criado_em', inicio.toISOString())
+        .lte('criado_em', fim.toISOString())
+        .neq('status', 'Cancelado')
+      if (estabId) qHistorico = qHistorico.eq('estabelecimento_id', estabId)
+      const [pedidosAtivos, pedidosHistorico] = await Promise.all([qAtivos, qHistorico])
+
+      const todosPedidos = [
+        ...(pedidosAtivos.data || []),
+        ...(pedidosHistorico.data || [])
+      ]
+
+      // Contar produtos
+      const contadorProdutos: Record<string, { quantidade: number, categoria: string, imagem?: string }> = {}
+
+      todosPedidos.forEach(pedido => {
+        if (pedido.itens && Array.isArray(pedido.itens)) {
+          pedido.itens.forEach((item: any) => {
+            const nomeProduto = item.produto?.nome || 'Produto sem nome'
+            const categoria = item.produto?.categoria || item.produto?.categoria_nome || 'Outros'
+            const imagem = item.produto?.urlImagem || item.produto?.imagem_path
+            const quantidade = item.quantidade || 1
+
+            if (!contadorProdutos[nomeProduto]) {
+              contadorProdutos[nomeProduto] = { quantidade: 0, categoria, imagem }
+            }
+            contadorProdutos[nomeProduto].quantidade += quantidade
+          })
+        }
+      })
+
+      // Converter para array e ordenar por quantidade
+      const produtosFavoritosTemp = Object.entries(contadorProdutos)
+        .map(([nome, data]) => ({
+          nome,
+          quantidade: data.quantidade,
+          categoria: data.categoria,
+          imagem: data.imagem
+        }))
+        .sort((a, b) => b.quantidade - a.quantidade)
+        .slice(0, 5) // Top 5
+
+      // Buscar imagens dos produtos diretamente da tabela produtos
+      const nomesProdutos = produtosFavoritosTemp.map(p => p.nome)
+      let qProdImg = supabase
+        .from('produtos')
+        .select('nome, imagem_path')
+        .in('nome', nomesProdutos)
+      if (estabId) qProdImg = qProdImg.eq('estabelecimento_id', estabId)
+      const { data: produtosData } = await qProdImg
+
+      // Mapear imagens aos produtos favoritos
+      const produtosFavoritos = produtosFavoritosTemp.map(produto => {
+        const produtoDb = produtosData?.find(p => p.nome === produto.nome)
+        return {
+          ...produto,
+          imagem: produtoDb?.imagem_path || produto.imagem
+        }
+      })
+
+      return produtosFavoritos
+    } catch (error) {
+      console.error('Erro ao carregar produtos favoritos:', error)
+      return []
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6 bg-gray-50/30">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Dashboard</h1>
+          <p className="text-gray-600">Carregando dados...</p>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i} className="border-0 shadow-md bg-white animate-pulse">
+              <CardContent className="p-6">
+                <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                <div className="h-8 bg-gray-200 rounded"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="container mx-auto p-6 space-y-4 bg-gray-50/30">
+      {/* Header Desktop */}
+      <div className="hidden md:flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Dashboard</h1>
+          <p className="text-gray-600">
+            Visão geral das suas vendas e produtos
+          </p>
+        </div>
+      </div>
+
+      {/* Header Mobile */}
+      <div className="md:hidden text-center">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Dashboard</h1>
+        <p className="text-gray-600 text-sm mt-1">
+          Visão geral das suas vendas e produtos
+        </p>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-col md:flex-row gap-3">
+        <Select value={periodo} onValueChange={setPeriodo}>
+          <SelectTrigger className="w-full md:w-[200px]">
+            <SelectValue placeholder="Período" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="hoje">Hoje</SelectItem>
+            <SelectItem value="7dias">Últimos 7 dias</SelectItem>
+            <SelectItem value="15dias">Últimos 15 dias</SelectItem>
+            <SelectItem value="30dias">Últimos 30 dias</SelectItem>
+            <SelectItem value="90dias">Últimos 90 dias</SelectItem>
+            <SelectItem value="tudo">Todo o período</SelectItem>
+            <SelectItem value="custom">Data específica</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {periodo === "custom" && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full md:w-[200px] justify-start text-left font-normal h-10",
+                  !dataCustom && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dataCustom ? format(dataCustom, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={dataCustom}
+                onSelect={setDataCustom}
+                locale={ptBR}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
+
+      {/* Cards principais com dados reais */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-indigo-600 to-indigo-700 text-white overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 relative z-10 py-1 px-3">
+            <CardTitle className="text-xs md:text-sm font-medium text-indigo-100">
+              Pedidos em Andamento
+            </CardTitle>
+            <Clock className="h-4 w-4 md:h-5 md:w-5 text-indigo-100" />
+          </CardHeader>
+          <CardContent className="relative z-10 py-1 px-3 pt-0">
+            <div className="text-lg md:text-x1 font-bold">{stats.pedidosPendentes}</div>
+            <p className="text-xs md:text-sm text-yellow-100">
+              Em preparo ou entrega
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-600 to-slate-700 text-white overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 relative z-10 py-1 px-3">
+            <CardTitle className="text-xs md:text-sm font-medium text-slate-200">
+              Entregas Finalizadas
+            </CardTitle>
+            <Truck className="h-4 w-4 md:h-5 md:w-5 text-slate-200" />
+          </CardHeader>
+          <CardContent className="relative z-10 py-1 px-3 pt-0">
+            <div className="text-lg md:text-xl font-bold">{stats.pedidosFinalizadosDelivery}</div>
+            <p className="text-xs md:text-sm text-slate-200">
+              {getPeriodoTexto()}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-violet-600 to-violet-700 text-white overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 relative z-10 py-1 px-3">
+            <CardTitle className="text-xs md:text-sm font-medium text-violet-100">
+              Vendas PDV
+            </CardTitle>
+            <ClipboardList className="h-4 w-4 md:h-5 md:w-5 text-violet-100" />
+          </CardHeader>
+          <CardContent className="relative z-10 py-1 px-3 pt-0">
+            <div className="text-lg md:text-xl font-bold">{stats.pedidosFinalizadosComandas}</div>
+            <p className="text-xs md:text-sm text-violet-100">
+              {getPeriodoTexto()}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-amber-500 to-amber-600 text-white overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 relative z-10 py-1 px-3">
+            <CardTitle className="text-xs md:text-sm font-medium text-amber-50">
+              Produtos Cadastrados
+            </CardTitle>
+            <Package className="h-4 w-4 md:h-5 md:w-5 text-amber-50" />
+          </CardHeader>
+          <CardContent className="relative z-10 py-1 px-3 pt-0">
+            <div className="text-lg md:text-xl font-bold">{stats.produtosCadastrados}</div>
+            <p className="text-xs md:text-sm text-amber-50">
+              Produtos ativos
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-teal-600 to-teal-700 text-white overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 relative z-10 py-1 px-3">
+            <CardTitle className="text-xs md:text-sm font-medium text-teal-100">
+              Avaliação Média
+            </CardTitle>
+            <Star className="h-4 w-4 md:h-5 md:w-5 text-teal-100" />
+          </CardHeader>
+          <CardContent className="relative z-10 py-1 px-3 pt-0">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="text-lg md:text-xl font-bold">{stats.avaliacaoMedia || '0.0'}</div>
+              <div className="flex">
+                {[1, 2, 3, 4, 5].map((estrela) => (
+                  <Star
+                    key={estrela}
+                    className={`h-3 w-3 md:h-4 md:w-4 ${estrela <= Math.round(stats.avaliacaoMedia)
+                      ? 'text-yellow-300 fill-current'
+                      : 'text-teal-200'
+                      }`}
+                  />
+                ))}
+              </div>
+            </div>
+            <p className="text-xs md:text-sm text-teal-100">
+              {stats.avaliacaoMedia > 0
+                ? `${stats.totalAvaliacoes} ${stats.totalAvaliacoes === 1 ? 'avaliação' : 'avaliações'}`
+                : 'Sem avaliações ainda'
+              }
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Seção de produtos favoritos */}
+      <div className="grid gap-4 lg:grid-cols-1">
+        <Card className="border-0 shadow-lg bg-white">
+          <CardHeader>
+            <CardTitle className="text-xl text-gray-900 flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-indigo-600" />
+              Produtos Mais Vendidos
+            </CardTitle>
+            <CardDescription className="text-gray-600">
+              Os produtos mais vendidos no período selecionado
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {produtosFavoritos.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Package className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>Nenhuma venda registrada no período selecionado</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {produtosFavoritos.map((produto, index) => (
+                  <div key={produto.nome} className="flex items-center justify-between p-3 md:p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3 md:space-x-4 flex-1 min-w-0">
+                      <div className="relative w-12 h-12 md:w-14 md:h-14 flex-shrink-0">
+                        <div className="w-full h-full rounded-full overflow-hidden border-2 border-gray-200">
+                          <img
+                            src={produto.imagem || '/placeholder-food.svg'}
+                            alt={produto.nome}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '/placeholder-food.svg';
+                            }}
+                          />
+                        </div>
+                        <div className={`absolute -bottom-0.5 -right-0.5 w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-white font-bold text-xs border-2 border-white shadow-md ${
+                          index === 0 ? 'bg-yellow-500' :
+                          index === 1 ? 'bg-gray-400' :
+                          index === 2 ? 'bg-orange-600' : 'bg-indigo-500'
+                        }`}>
+                          {index + 1}
+                        </div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-gray-900 text-sm md:text-base truncate">{produto.nome}</p>
+                        <p className="text-xs md:text-sm text-gray-600 capitalize">{produto.categoria}</p>
+                        {index === 0 && (
+                          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 text-xs mt-1">
+                            🏆 Mais Vendido
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-xl md:text-2xl font-bold text-gray-900">{produto.quantidade}</p>
+                      <p className="text-xs md:text-sm text-gray-500">
+                        {produto.quantidade === 1 ? 'venda' : 'vendas'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
