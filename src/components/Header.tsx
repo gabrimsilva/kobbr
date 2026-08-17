@@ -20,30 +20,35 @@ export default function Header({
   onBack,
   showInfoButton = true
 }: HeaderProps) {
+  // Se não tem banner, usar fundo branco simples
+  const temBanner = bannerUrl && bannerUrl.trim() !== ''
+  
   return (
     <div
-      className="relative shadow-sm border-b overflow-hidden min-h-[200px]"
-      style={{
+      className={`relative shadow-sm border-b overflow-hidden ${temBanner ? 'min-h-[200px]' : 'bg-white'}`}
+      style={!temBanner ? {} : {
         background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 30%, #90caf9 70%, #64b5f6 100%)'
       }}
     >
       {/* Banner como fundo - usa o configurado ou o fallback */}
-      <div className="absolute inset-0 w-full h-full flex items-center justify-center">
-        <div className="w-full h-full" style={{ maxWidth: '1550px' }}>
-          <img
-            src={bannerUrl || '/banner-exemplo.svg'}
-            alt="Banner do estabelecimento"
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-            }}
-          />
+      {temBanner && (
+        <div className="absolute inset-0 w-full h-full flex items-center justify-center">
+          <div className="w-full h-full" style={{ maxWidth: '1550px' }}>
+            <img
+              src={bannerUrl}
+              alt="Banner do estabelecimento"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content Section - sobreposto ao banner */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 py-6 flex flex-col items-center justify-center min-h-[200px]">
+      <div className={`relative z-10 max-w-7xl mx-auto px-4 flex flex-col items-center justify-center ${temBanner ? 'py-6 min-h-[200px]' : 'py-4'}`}>
         {/* Botão de voltar */}
         {showBackButton && onBack && (
           <button
@@ -63,7 +68,7 @@ export default function Header({
 
         {/* Logo */}
         <div className="flex items-center justify-center mb-3">
-          <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center overflow-hidden shadow-lg ring-4 ring-white ring-opacity-50">
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center overflow-hidden shadow-lg ring-4 ring-opacity-50 ${temBanner ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 ring-white' : 'bg-white ring-gray-200'}`}>
             {logoUrl ? (
               <img
                 src={logoUrl}
@@ -87,18 +92,18 @@ export default function Header({
         </div>
 
         {/* Nome do estabelecimento */}
-        <div className="inline-block bg-white bg-opacity-95 px-6 py-2 rounded-2xl shadow-md mb-3">
-          <h1 className="text-2xl font-bold text-indigo-700 text-center">
+        <div className={`inline-block px-6 py-2 rounded-2xl shadow-md mb-3 ${temBanner ? 'bg-white bg-opacity-95' : 'bg-gray-50'}`}>
+          <h1 className={`text-2xl font-bold text-center ${temBanner ? 'text-indigo-700' : 'text-gray-800'}`}>
             {nomeEstabelecimento}
           </h1>
         </div>
 
         {/* Botão "Mais informações" com fundo branco semi-transparente */}
         {showInfoButton && (
-          <div className="inline-block bg-white bg-opacity-95 px-6 py-3 rounded-2xl shadow-md">
+          <div className={`inline-block px-6 py-3 rounded-2xl shadow-md ${temBanner ? 'bg-white bg-opacity-95' : 'bg-gray-50'}`}>
             <button
               onClick={onMaisInformacoes}
-              className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-medium transition-colors cursor-pointer text-sm"
+              className={`flex items-center gap-2 font-medium transition-colors cursor-pointer text-sm ${temBanner ? 'text-indigo-600 hover:text-indigo-700' : 'text-purple-600 hover:text-purple-700'}`}
             >
               <Info className="h-4 w-4" />
               <span>Mais informações</span>
