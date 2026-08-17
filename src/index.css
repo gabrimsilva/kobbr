@@ -78,70 +78,70 @@
   /* === CONFIGURAÇÕES GERAIS === */
   --radius: 0.875rem; /* Botões mais arredondados para visual mais suave */
 
-  /* === CORES BASE DO SISTEMA === */
-  --background: oklch(0.985 0.004 270);
-  /* branco levemente índigo - sóbrio */
-  --foreground: oklch(0.28 0.02 270);
-  /* cinza escuro com toque índigo */
+  /* === CORES BASE DO SISTEMA - KOBE THEME === */
+  --background: oklch(0.985 0.008 310);
+  /* branco levemente rosa/roxo */
+  --foreground: oklch(0.28 0.04 290);
+  /* cinza escuro com toque roxo */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.28 0.02 270);
+  --card-foreground: oklch(0.28 0.04 290);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.28 0.02 270);
+  --popover-foreground: oklch(0.28 0.04 290);
 
-  /* === CORES PRIMÁRIAS (Botões Admin) === */
-  --primary: oklch(0.45 0.14 270);
-  /* índigo profundo - Botões principais do admin */
+  /* === CORES PRIMÁRIAS (Botões Admin) - KOBE PURPLE === */
+  --primary: oklch(0.58 0.20 290);
+  /* roxo vibrante KOBE - Botões principais */
   --primary-foreground: oklch(1 0 0);
 
-  /* === CORES SECUNDÁRIAS === */
-  --secondary: oklch(0.96 0.008 270);
-  /* cinza índigo muito claro */
-  --secondary-foreground: oklch(0.40 0.06 270);
+  /* === CORES SECUNDÁRIAS - KOBE PINK === */
+  --secondary: oklch(0.96 0.015 320);
+  /* rosa muito claro */
+  --secondary-foreground: oklch(0.40 0.12 330);
 
   /* === CORES DE ESTADO === */
-  --muted: oklch(0.96 0.006 270);
-  /* cinza muito claro neutro */
-  --muted-foreground: oklch(0.50 0.02 270);
-  --accent: oklch(0.96 0.008 270);
-  /* cinza índigo muito claro */
-  --accent-foreground: oklch(0.25 0.02 270);
+  --muted: oklch(0.96 0.008 310);
+  /* cinza rosa muito claro */
+  --muted-foreground: oklch(0.50 0.04 300);
+  --accent: oklch(0.96 0.015 320);
+  /* rosa muito claro */
+  --accent-foreground: oklch(0.25 0.04 290);
 
   /* === CORES DESTRUTIVAS (Botões de excluir/limpar) === */
   --destructive: oklch(0.577 0.245 27.325);
   /* vermelho */
 
   /* === BORDAS E INPUTS === */
-  --border: oklch(0.90 0.008 270);
-  /* borda suave cinza índigo */
-  --input: oklch(0.90 0.008 270);
-  --ring: oklch(0.45 0.14 270);
-  /* anel de foco índigo */
+  --border: oklch(0.90 0.012 310);
+  /* borda suave rosa/roxo */
+  --input: oklch(0.90 0.012 310);
+  --ring: oklch(0.58 0.20 290);
+  /* anel de foco roxo KOBE */
 
-  /* === CORES DE GRÁFICOS === */
-  --chart-1: oklch(0.45 0.14 270);
-  /* índigo profundo */
-  --chart-2: oklch(0.55 0.12 255);
-  /* azul índigo */
-  --chart-3: oklch(0.72 0.13 80);
-  /* dourado/âmbar - acento */
-  --chart-4: oklch(0.50 0.10 300);
-  /* violeta sóbrio */
-  --chart-5: oklch(0.55 0.06 250);
-  /* azul acinzentado */
+  /* === CORES DE GRÁFICOS - KOBE PALETTE === */
+  --chart-1: oklch(0.58 0.20 290);
+  /* roxo KOBE */
+  --chart-2: oklch(0.62 0.22 330);
+  /* rosa KOBE */
+  --chart-3: oklch(0.60 0.24 310);
+  /* magenta KOBE */
+  --chart-4: oklch(0.72 0.18 280);
+  /* roxo claro */
+  --chart-5: oklch(0.68 0.20 340);
+  /* rosa vibrante */
 
-  /* === SIDEBAR ADMIN === */
-  --sidebar: oklch(0.96 0.008 270);
-  /* cinza índigo muito claro - Fundo da sidebar */
-  --sidebar-foreground: oklch(0.35 0.03 270);
-  /* Texto da sidebar - cinza escuro */
-  --sidebar-primary: oklch(0.45 0.14 270);
-  /* índigo profundo - Item ativo */
+  /* === SIDEBAR ADMIN - KOBE THEME === */
+  --sidebar: oklch(0.96 0.012 310);
+  /* rosa/roxo muito claro - Fundo da sidebar */
+  --sidebar-foreground: oklch(0.35 0.06 290);
+  /* Texto da sidebar - cinza roxo escuro */
+  --sidebar-primary: oklch(0.58 0.20 290);
+  /* roxo KOBE - Item ativo */
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.92 0.02 270);
-  /* cinza índigo claro - Hover */
-  --sidebar-accent-foreground: oklch(0.35 0.03 270);
-  --sidebar-border: oklch(0.87 0.03 270);
-  /* cinza índigo - Bordas */
+  --sidebar-accent: oklch(0.92 0.03 310);
+  /* rosa/roxo claro - Hover */
+  --sidebar-accent-foreground: oklch(0.35 0.06 290);
+  --sidebar-border: oklch(0.87 0.05 310);
+  /* rosa/roxo - Bordas */
   --sidebar-ring: oklch(0.708 0 0);
 
   /* === VARIÁVEIS SEMÂNTICAS CUSTOMIZADAS === */
@@ -158,13 +158,13 @@
   --admin-sidebar-hover-bg: var(--sidebar-accent);
   --admin-sidebar-border: var(--sidebar-border);
 
-  /* === CORES DE PREÇOS === */
+  /* === CORES DE PREÇOS - KOBE THEME === */
   /* Cor padrão para exibição de preços de produtos no admin */
-  --price-color: oklch(0.45 0.13 270);
-  /* índigo profundo elegante */
+  --price-color: oklch(0.58 0.20 290);
+  /* roxo KOBE elegante */
   /* Cor para exibição de preços nas páginas públicas (delivery/cliente) */
-  --price-color-cliente: oklch(0.42 0.14 270);
-  /* índigo mais intenso */
+  --price-color-cliente: oklch(0.62 0.22 330);
+  /* rosa KOBE vibrante */
   --color-price: var(--price-color);
   --color-price-cliente: var(--price-color-cliente);
 }
@@ -227,29 +227,29 @@
     @apply bg-background text-foreground;
   }
 
-  /* Sombras mais suaves e elegantes */
+  /* Sombras mais suaves e elegantes - KOBE Theme */
   .shadow-sm {
-    box-shadow: 0 1px 3px 0 rgb(148 163 184 / 0.1), 0 1px 2px -1px rgb(148 163 184 / 0.1);
+    box-shadow: 0 1px 3px 0 rgb(167 139 250 / 0.1), 0 1px 2px -1px rgb(167 139 250 / 0.1);
   }
 
   .shadow {
-    box-shadow: 0 4px 6px -1px rgb(148 163 184 / 0.15), 0 2px 4px -2px rgb(148 163 184 / 0.15);
+    box-shadow: 0 4px 6px -1px rgb(167 139 250 / 0.15), 0 2px 4px -2px rgb(167 139 250 / 0.15);
   }
 
   .shadow-md {
-    box-shadow: 0 6px 12px -2px rgb(148 163 184 / 0.2), 0 3px 6px -3px rgb(148 163 184 / 0.2);
+    box-shadow: 0 6px 12px -2px rgb(167 139 250 / 0.2), 0 3px 6px -3px rgb(167 139 250 / 0.2);
   }
 
   .shadow-lg {
-    box-shadow: 0 10px 20px -3px rgb(148 163 184 / 0.25), 0 4px 8px -4px rgb(148 163 184 / 0.25);
+    box-shadow: 0 10px 20px -3px rgb(167 139 250 / 0.25), 0 4px 8px -4px rgb(167 139 250 / 0.25);
   }
 }
 
-/* Scrollbar customizada apenas para o body principal */
+/* Scrollbar customizada apenas para o body principal - KOBE Theme */
 body {
   scrollbar-width: thin;
-  scrollbar-color: rgb(203 213 225) rgb(248 250 252);
-  /* azul ardósia suave */
+  scrollbar-color: rgb(167 139 250) rgb(250 245 255);
+  /* roxo/rosa KOBE */
 }
 
 body::-webkit-scrollbar {
@@ -258,26 +258,26 @@ body::-webkit-scrollbar {
 }
 
 body::-webkit-scrollbar-track {
-  background: rgb(248 250 252);
-  /* fundo azulado claro */
+  background: rgb(250 245 255);
+  /* fundo rosa muito claro */
   border-radius: 5px;
 }
 
 body::-webkit-scrollbar-thumb {
-  background: rgb(203 213 225);
-  /* azul ardósia suave */
+  background: rgb(167 139 250);
+  /* roxo KOBE */
   border-radius: 5px;
-  border: 2px solid rgb(248 250 252);
+  border: 2px solid rgb(250 245 255);
   transition: background 0.3s ease;
 }
 
 body::-webkit-scrollbar-thumb:hover {
-  background: rgb(148 163 184);
-  /* azul ardósia médio */
+  background: rgb(139 92 246);
+  /* roxo KOBE mais escuro */
 }
 
 body::-webkit-scrollbar-corner {
-  background: rgb(248 250 252);
+  background: rgb(250 245 255);
 }
 
 /* Utilitários para truncar texto */
@@ -365,16 +365,16 @@ body::-webkit-scrollbar-corner {
   }
 }
 
-/* Background Patterns */
+/* Background Patterns - KOBE Theme */
 body.bg-pattern-hideout {
-  background: linear-gradient(45deg, rgba(186, 230, 253, 0.12) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(186, 230, 253, 0.12) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(186, 230, 253, 0.12) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(186, 230, 253, 0.12) 75%) !important;
+  background: linear-gradient(45deg, rgba(216, 180, 254, 0.12) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(216, 180, 254, 0.12) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(216, 180, 254, 0.12) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(216, 180, 254, 0.12) 75%) !important;
   background-size: 20px 20px !important;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0px !important;
-  background-color: #f8fafc !important;
-  /* fundo azulado muito claro */
+  background-color: #faf5ff !important;
+  /* fundo rosa/roxo muito claro */
   background-attachment: fixed !important;
 }
 
@@ -382,8 +382,8 @@ body.bg-pattern-i-like-food {
   background-image: url("/patterns/i-like-food.svg") !important;
   background-size: 60px 60px !important;
   background-repeat: repeat !important;
-  background-color: #f8fafc !important;
-  /* fundo azulado muito claro */
+  background-color: #faf5ff !important;
+  /* fundo rosa/roxo muito claro */
   background-attachment: fixed !important;
 }
 
@@ -401,58 +401,58 @@ body.bg-pattern-i-like-food {
   overflow: hidden;
 }
 
-/* Estilos para os sliders de configuração */
+/* Estilos para os sliders de configuração - KOBE Theme */
 .slider::-webkit-slider-thumb {
   appearance: none;
   height: 20px;
   width: 20px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
   cursor: pointer;
   border: 2px solid #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);
 }
 
 .slider::-moz-range-thumb {
   height: 20px;
   width: 20px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
   cursor: pointer;
   border: 2px solid #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);
 }
 
-/* Estilos customizados para cards do dashboard - tema sereno */
+/* Estilos customizados para cards do dashboard - KOBE Theme */
 .dashboard-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.98) 100%);
-  border: 1px solid rgba(186, 230, 253, 0.3);
-  box-shadow: 0 4px 12px rgba(148, 163, 184, 0.15);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 245, 255, 0.98) 100%);
+  border: 1px solid rgba(216, 180, 254, 0.3);
+  box-shadow: 0 4px 12px rgba(167, 139, 250, 0.15);
   transition: all 0.3s ease;
 }
 
 .dashboard-card:hover {
-  box-shadow: 0 8px 20px rgba(148, 163, 184, 0.25);
+  box-shadow: 0 8px 20px rgba(167, 139, 250, 0.25);
   transform: translateY(-2px);
 }
 
-/* Cards com cores específicas - tons pastéis serenos */
+/* Cards com cores específicas - tons KOBE */
 .card-pink {
-  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-  border-color: #7dd3fc;
+  background: linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%);
+  border-color: #f0abfc;
 }
 
 .card-purple {
-  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
   border-color: #c4b5fd;
 }
 
 .card-rose {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-  border-color: #93c5fd;
+  background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+  border-color: #f9a8d4;
 }
 
 .card-lavender {
-  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-  border-color: #ddd6fe;
+  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+  border-color: #e9d5ff;
 }

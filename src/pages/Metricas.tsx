@@ -5,9 +5,6 @@ import toast from "react-hot-toast"
 import { usePermissoes } from "@/hooks/usePermissoes"
 import type { Estabelecimento } from "@/types/estabelecimento"
 import RelatorioMetricas from "@/components/RelatorioMetricas"
-import CardConsumoInterno from "@/components/metrics/CardConsumoInterno"
-import LineChartConsumoInterno from "@/components/metrics/LineChartConsumoInterno"
-import ListaConsumoInterno from "@/components/metrics/ListaConsumoInterno"
 import {
   BarChart,
   Bar,
@@ -982,104 +979,6 @@ export default function Metricas() {
         </div>
       )}
 
-      {/* Cards de Resumo - Delivery */}
-      {(filtroTipoVenda === "TODOS" || filtroTipoVenda === "DELIVERY") && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-            🚚 Delivery
-          </h3>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-indigo-50/30">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Faturamento Delivery</CardTitle>
-                <DollarSign className="h-4 w-4 text-indigo-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-indigo-700">{formatarMoeda(metricas?.faturamentoDelivery || 0)}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Total de pedidos entregues
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-indigo-50/30">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pedidos Delivery</CardTitle>
-                <ShoppingCart className="h-4 w-4 text-indigo-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-indigo-700">{metricas?.quantidadeVendasDelivery || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Pedidos finalizados
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-indigo-50/30">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Ticket Médio Delivery</CardTitle>
-                <TrendingUp className="h-4 w-4 text-indigo-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-indigo-700">{formatarMoeda(metricas?.ticketMedioDelivery || 0)}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Valor médio por pedido
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {/* Cards de Resumo - Comandas */}
-      {(filtroTipoVenda === "TODOS" || filtroTipoVenda === "COMANDA") && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-            🧾 Comandas
-          </h3>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-teal-200 bg-gradient-to-br from-teal-50/50 to-teal-50/30">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Faturamento Comandas</CardTitle>
-                <DollarSign className="h-4 w-4 text-teal-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-teal-700">{formatarMoeda(metricas?.faturamentoComandas || 0)}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Total de comandas finalizadas
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-teal-200 bg-gradient-to-br from-teal-50/50 to-teal-50/30">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Comandas Finalizadas</CardTitle>
-                <ShoppingCart className="h-4 w-4 text-teal-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-teal-700">{metricas?.quantidadeVendasComandas || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Comandas no período
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-teal-200 bg-gradient-to-br from-teal-50/50 to-teal-50/30">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Ticket Médio Comandas</CardTitle>
-                <TrendingUp className="h-4 w-4 text-teal-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-teal-700">{formatarMoeda(metricas?.ticketMedioComandas || 0)}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Valor médio por comanda
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-
       {/* Gráficos */}
       <Tabs defaultValue="vendas" className="space-y-4">
         <div className="overflow-x-auto -mx-6 px-6 md:mx-0 md:px-0">
@@ -1444,35 +1343,6 @@ export default function Metricas() {
           </div>
         </TabsContent>
       </Tabs>
-
-      {/* 🚀 NOVO: Seção de Consumo Interno - Phase 4 Integration */}
-      <div className="border-t pt-6 mt-8">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900">
-          📦 Consumo Interno
-        </h2>
-        
-        {/* Card de Total + Gráfico de Evolução */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-          {/* Card de Total (1 coluna) */}
-          <div className="lg:col-span-1">
-            <CardConsumoInterno dataInicio={dataInicio} dataFim={dataFim} />
-          </div>
-          
-          {/* Gráfico de Evolução (2 colunas) */}
-          <div className="lg:col-span-2">
-            <LineChartConsumoInterno dataInicio={dataInicio} dataFim={dataFim} />
-          </div>
-        </div>
-
-        {/* Lista de Produtos Consumidos */}
-        <div className="grid grid-cols-1 gap-4">
-          <ListaConsumoInterno 
-            key={`${dataInicio.toISOString()}-${dataFim.toISOString()}`}
-            dataInicio={dataInicio} 
-            dataFim={dataFim} 
-          />
-        </div>
-      </div>
     </div>
   )
 }

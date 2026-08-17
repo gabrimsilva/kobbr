@@ -81,7 +81,7 @@ export function FormasPagamentoConfig({
           </div>
           <Switch 
             checked={formasPagamento.dinheiro}
-            onChange={(checked) => onFormasPagamentoChange('dinheiro', checked)}
+            onChange={(checked: boolean) => onFormasPagamentoChange('dinheiro', checked)}
           />
         </div>
         
@@ -92,7 +92,7 @@ export function FormasPagamentoConfig({
           </div>
           <Switch 
             checked={formasPagamento.cartaoDebito}
-            onChange={(checked) => onFormasPagamentoChange('cartaoDebito', checked)}
+            onChange={(checked: boolean) => onFormasPagamentoChange('cartaoDebito', checked)}
           />
         </div>
         
@@ -103,7 +103,7 @@ export function FormasPagamentoConfig({
           </div>
           <Switch 
             checked={formasPagamento.cartaoCredito}
-            onChange={(checked) => onFormasPagamentoChange('cartaoCredito', checked)}
+            onChange={(checked: boolean) => onFormasPagamentoChange('cartaoCredito', checked)}
           />
         </div>
         
@@ -114,7 +114,7 @@ export function FormasPagamentoConfig({
           </div>
           <Switch 
             checked={formasPagamento.pix}
-            onChange={(checked) => onFormasPagamentoChange('pix', checked)}
+            onChange={(checked: boolean) => onFormasPagamentoChange('pix', checked)}
           />
         </div>
         
@@ -256,7 +256,7 @@ export function FormasPagamentoConfig({
           </div>
           <Switch 
             checked={formasPagamento.pixEntrega}
-            onChange={(checked) => onFormasPagamentoChange('pixEntrega', checked)}
+            onChange={(checked: boolean) => onFormasPagamentoChange('pixEntrega', checked)}
           />
         </div>
         
@@ -267,7 +267,7 @@ export function FormasPagamentoConfig({
           </div>
           <Switch 
             checked={formasPagamento.cartaoVR}
-            onChange={(checked) => onFormasPagamentoChange('cartaoVR', checked)}
+            onChange={(checked: boolean) => onFormasPagamentoChange('cartaoVR', checked)}
           />
         </div>
         
@@ -278,7 +278,7 @@ export function FormasPagamentoConfig({
           </div>
           <Switch 
             checked={formasPagamento.cartaoVA}
-            onChange={(checked) => onFormasPagamentoChange('cartaoVA', checked)}
+            onChange={(checked: boolean) => onFormasPagamentoChange('cartaoVA', checked)}
           />
         </div>
         
@@ -289,7 +289,7 @@ export function FormasPagamentoConfig({
           </div>
           <Switch 
             checked={formasPagamento.ticketPromo}
-            onChange={(checked) => onFormasPagamentoChange('ticketPromo', checked)}
+            onChange={(checked: boolean) => onFormasPagamentoChange('ticketPromo', checked)}
           />
         </div>
         

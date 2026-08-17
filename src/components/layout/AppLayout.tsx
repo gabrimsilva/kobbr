@@ -2,9 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   LayoutDashboard,
-  Users,
   Package,
-  ShoppingCart,
   History,
   Warehouse,
   Layers,
@@ -12,7 +10,6 @@ import {
   LogOut,
   Store,
   Eye,
-  ClipboardList,
   ChevronDown,
   ChevronRight,
   Info,
@@ -20,11 +17,7 @@ import {
   Clock,
   CreditCard,
   Palette,
-  Bell,
-  Printer,
-  Building2,
   UserCog,
-  ScrollText,
   TrendingUp
 } from "lucide-react"
 import MobileAdminHeader from "../MobileAdminHeader"
@@ -108,16 +101,6 @@ const menuItems = [
         title: "Aparência",
         icon: Palette,
         id: "configuracoes-visuais"
-      },
-      {
-        title: "Notificações",
-        icon: Bell,
-        id: "configuracoes-notificacao"
-      },
-      {
-        title: "Impressão",
-        icon: Printer,
-        id: "configuracoes-impressao"
       }
     ]
   },

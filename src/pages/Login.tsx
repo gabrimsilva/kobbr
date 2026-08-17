@@ -141,39 +141,50 @@ export default function Login({ onLogin }: LoginProps) {
 
           {/* Conteúdo Esquerdo Overlay */}
           <div className="login-left-content">
+            {/* Logo KOBE */}
+            <div className="kobe-logo-container">
+              <img 
+                src="/img/kobe-logo.png" 
+                alt="KOBE E-Commerce" 
+                className="kobe-logo"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+            </div>
+
             {/* Título */}
             <div className="title-section">
-              <h1 className="title-line-2">Cantina</h1>
-              <p className="subtitle">Comunidade Videira</p>
+              <h1 className="title-line-2">KOBE</h1>
+              <p className="subtitle">E-Commerce</p>
             </div>
 
             {/* Descrição */}
             <div className="description-section">
               <p className="description-text">
-                Gerencie a cantina da igreja com excelência.<br />
-                Sirva com amor.<br />
-                Alimente propósitos.
+                Sistema completo de gestão<br />
+                para o seu negócio.<br />
+                Modernidade e eficiência.
               </p>
             </div>
 
-            {/* Versículo Card */}
+            {/* Card Destaque */}
             <div className="verse-card">
               <svg className="verse-quote" width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M3 21c3 0 7-1 7-8V5c0-1.25-4.4-4.5-7-4.5-1.5 0-3 1-3 3v12c0 2 1 3 3 3z" stroke="currentColor" strokeWidth="2" fill="none"/>
-                <path d="M15 21c3 0 7-1 7-8V5c0-1.25-4.4-4.5-7-4.5-1.5 0-3 1-3 3v12c0 2 1 3 3 3z" stroke="currentColor" strokeWidth="2" fill="none"/>
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               <p className="verse-text">
-                "Tudo quanto fizerdes, fazei-o de todo o coração, como para o Senhor e não para homens."
+                Gestão inteligente de estoque, vendas e métricas em um só lugar.
               </p>
-              <p className="verse-reference">Colossenses 3:23</p>
+              <p className="verse-reference">Térmicas Atacado</p>
             </div>
           </div>
 
-          {/* Logo Grande - Bottom */}
+          {/* Logo Grande Marca D'água - Background */}
           <div className="santa-ceia-container">
             <img 
-              src="/img/logo-videira.png" 
-              alt="Logo Videira" 
+              src="/img/kobe-logo.png" 
+              alt="KOBE Background" 
               className="santa-ceia-image"
               onError={(e) => {
                 e.currentTarget.style.display = 'none'
@@ -189,7 +200,7 @@ export default function Login({ onLogin }: LoginProps) {
             {/* Header */}
             <div className="login-header">
               <h2>Bem-vindo(a)!</h2>
-              <p>Faça login para acessar o sistema de gestão da cantina.</p>
+              <p>Faça login para acessar o sistema.</p>
             </div>
 
             {/* Form */}

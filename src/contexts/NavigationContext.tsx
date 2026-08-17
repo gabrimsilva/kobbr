@@ -41,8 +41,6 @@ export type AdminPage =
   | 'configuracoes-horario'
   | 'configuracoes-pagamento'
   | 'configuracoes-visuais'
-  | 'configuracoes-notificacao'
-  | 'configuracoes-impressao'
 
 /**
  * Contexto de navegação do sistema administrativo

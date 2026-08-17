@@ -12,29 +12,21 @@ import {
 import {
   Menu,
   Home,
-  ShoppingCart,
   Package,
   Settings,
   History,
-  Utensils,
   Tags,
-  UserCheck,
   Archive,
   Eye,
   LogOut,
   Store,
-  ClipboardList,
   ChevronDown,
   ChevronRight,
   Info,
   Clock,
   CreditCard,
   Palette,
-  Bell,
-  Printer,
-  Building2,
   UserCog,
-  ScrollText,
   TrendingUp
 } from "lucide-react"
 import { configuracaoService } from "@/services"
@@ -89,9 +81,7 @@ const menuItems: MenuItem[] = [
       { name: "Informações Gerais", id: "configuracoes-gerais", icon: Info },
       { name: "Horários", id: "configuracoes-horario", icon: Clock },
       { name: "Pagamentos", id: "configuracoes-pagamento", icon: CreditCard },
-      { name: "Aparência", id: "configuracoes-visuais", icon: Palette },
-      { name: "Notificações", id: "configuracoes-notificacao", icon: Bell },
-      { name: "Impressão", id: "configuracoes-impressao", icon: Printer }
+      { name: "Aparência", id: "configuracoes-visuais", icon: Palette }
     ]
   },
   { name: "Usuários", id: "usuarios", icon: UserCog },

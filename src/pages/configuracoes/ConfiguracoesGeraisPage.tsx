@@ -20,8 +20,6 @@ export default function ConfiguracoesGeraisPage() {
     endereco: '',
     cep: '',
     telefone: '',
-    telefoneFixo: '',
-    whatsapp: '',
     email: ''
   })
   const [loading, setLoading] = useState(true)
@@ -37,16 +35,16 @@ export default function ConfiguracoesGeraisPage() {
   const carregarConfiguracoes = async () => {
     try {
       setLoading(true)
+      setError(null)
+      
       const configuracoes = await configuracaoService.buscarTodas()
 
       const configCarregada = {
-        nomeEstabelecimento: 'Loja de Cosméticos',
-        endereco: 'Rua das Flores, 123 - Centro',
+        nomeEstabelecimento: '',
+        endereco: '',
         cep: '',
-        telefone: '(11) 99999-9999',
-        telefoneFixo: '',
-        whatsapp: '(11) 99999-9999',
-        email: 'contato@loja.com'
+        telefone: '',
+        email: ''
       }
 
       configuracoes.forEach(cfg => {
@@ -63,12 +61,6 @@ export default function ConfiguracoesGeraisPage() {
           case 'telefone_loja':
             configCarregada.telefone = formatarTelefone(cfg.valor)
             break
-          case 'telefone_fixo_loja':
-            configCarregada.telefoneFixo = formatarTelefone(cfg.valor)
-            break
-          case 'whatsapp_loja':
-            configCarregada.whatsapp = formatarTelefone(cfg.valor)
-            break
           case 'email_loja':
             configCarregada.email = cfg.valor
             break
@@ -78,7 +70,7 @@ export default function ConfiguracoesGeraisPage() {
       setConfig(configCarregada)
     } catch (err) {
       console.error('Erro ao carregar configurações:', err)
-      setError('Erro ao carregar configurações')
+      setError(`Erro ao carregar configurações: ${err instanceof Error ? err.message : 'Erro desconhecido'}`)
     } finally {
       setLoading(false)
     }
@@ -94,8 +86,6 @@ export default function ConfiguracoesGeraisPage() {
         { chave: 'endereco_loja', valor: config.endereco, categoria: 'loja', descricao: 'Endereço da loja' },
         { chave: 'cep_loja', valor: config.cep, categoria: 'loja', descricao: 'CEP da loja' },
         { chave: 'telefone_loja', valor: config.telefone, categoria: 'loja', descricao: 'Telefone da loja' },
-        { chave: 'telefone_fixo_loja', valor: config.telefoneFixo, categoria: 'loja', descricao: 'Telefone fixo da loja' },
-        { chave: 'whatsapp_loja', valor: config.whatsapp, categoria: 'loja', descricao: 'WhatsApp da loja' },
         { chave: 'email_loja', valor: config.email, categoria: 'loja', descricao: 'Email da loja' }
       ]
 
@@ -148,8 +138,6 @@ export default function ConfiguracoesGeraisPage() {
         endereco={config.endereco}
         cep={config.cep}
         telefone={config.telefone}
-        telefoneFixo={config.telefoneFixo}
-        whatsapp={config.whatsapp}
         email={config.email}
         onChange={handleConfigChange}
       />

@@ -8,8 +8,6 @@ interface ConfiguracoesGeraisProps {
   endereco: string
   cep: string
   telefone: string
-  telefoneFixo: string
-  whatsapp: string
   email: string
   onChange: (field: string, value: string) => void
 }
@@ -25,8 +23,6 @@ export function ConfiguracoesGerais({
   endereco,
   cep,
   telefone,
-  telefoneFixo,
-  whatsapp,
   email,
   onChange
 }: ConfiguracoesGeraisProps) {
@@ -88,28 +84,6 @@ export function ConfiguracoesGerais({
             placeholder="(11) 9 9999-9999" 
             value={telefone}
             onChange={(e) => handleTelefoneChange('telefone', e.target.value)}
-            maxLength={16}
-          />
-        </div>
-        <div className="grid gap-2">
-          <label htmlFor="telefone-fixo-config" className="text-sm font-medium">Telefone Fixo</label>
-          <Input
-            id="telefone-fixo-config"
-            name="telefone-fixo-config"
-            placeholder="(11) 3333-3333" 
-            value={telefoneFixo}
-            onChange={(e) => handleTelefoneChange('telefoneFixo', e.target.value)}
-            maxLength={14}
-          />
-        </div>
-        <div className="grid gap-2">
-          <label htmlFor="whatsapp-config" className="text-sm font-medium">WhatsApp para Pedidos</label>
-          <Input
-            id="whatsapp-config"
-            name="whatsapp-config"
-            placeholder="(11) 9 9999-9999" 
-            value={whatsapp}
-            onChange={(e) => handleTelefoneChange('whatsapp', e.target.value)}
             maxLength={16}
           />
         </div>

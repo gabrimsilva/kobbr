@@ -42,9 +42,6 @@ export default function EditarProduto() {
         return
       }
 
-      const saboresAssociados = await produtoService.buscarSaboresProduto(produtoId!)
-      const saboresIds = saboresAssociados.map(sabor => sabor.id)
-
       const categoriaReal = categorias.find(cat => cat.id === produtoData.categoria_id)
 
       const produtoComAlias: Produto = {
@@ -52,9 +49,9 @@ export default function EditarProduto() {
         categoria: categoriaReal ? categoriaReal.nome.toLowerCase() : produtoData.categoria_nome?.toLowerCase() || 'outros',
         urlImagem: produtoData.imagem_path || '',
         precoPromocional: produtoData.preco_promocional,
-        saboresDisponiveis: produtoData.sabores_disponiveis,
-        quantidadeSabores: produtoData.quantidade_sabores,
-        saboresSelecionados: saboresIds
+        saboresDisponiveis: false,
+        quantidadeSabores: 1,
+        saboresSelecionados: []
       }
 
       setProduto(produtoComAlias)
@@ -96,12 +93,6 @@ export default function EditarProduto() {
       // Atualizar produto
       await produtoService.atualizar(produtoId!, produtoParaSalvar)
       console.log('✅ Produto atualizado com sucesso')
-
-      // Associar sabores (se houver)
-      if (produtoAtualizado.saboresSelecionados && produtoAtualizado.saboresSelecionados.length > 0) {
-        await produtoService.associarSabores(produtoId!, produtoAtualizado.saboresSelecionados)
-        console.log('✅ Sabores associados com sucesso')
-      }
 
       // Atualizar tamanhos (se definido)
       if (produtoAtualizado.tamanhos !== undefined) {

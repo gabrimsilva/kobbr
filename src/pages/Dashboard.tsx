@@ -17,21 +17,17 @@ import {
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import {
   Package,
-  Clock,
   Star,
   TrendingUp,
-  Truck,
   ClipboardList,
   CalendarIcon
 } from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { cn } from "@/lib/utils"
-import { pedidoService, produtoService, supabase, getEstabelecimentoAtivo } from "@/services"
+import { produtoService, supabase, getEstabelecimentoAtivo } from "@/services"
 
 interface DashboardStats {
-  pedidosPendentes: number
-  pedidosFinalizadosDelivery: number
   pedidosFinalizadosComandas: number
   produtosCadastrados: number
   avaliacaoMedia: number
@@ -47,8 +43,6 @@ interface ProdutoFavorito {
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
-    pedidosPendentes: 0,
-    pedidosFinalizadosDelivery: 0,
     pedidosFinalizadosComandas: 0,
     produtosCadastrados: 0,
     avaliacaoMedia: 0,
@@ -133,13 +127,11 @@ export default function Dashboard() {
 
       // Carregar dados em paralelo
       const [
-        pedidosAtivos,
-        { delivery, comandas },
+        { comandas },
         produtos,
         produtosFavoritosData,
         { media, total }
       ] = await Promise.all([
-        carregarPedidosPendentes(),
         carregarPedidosFinalizados(inicio, fim),
         carregarProdutosCadastrados(),
         carregarProdutosFavoritos(inicio, fim),
@@ -147,8 +139,6 @@ export default function Dashboard() {
       ])
 
       setStats({
-        pedidosPendentes: pedidosAtivos,
-        pedidosFinalizadosDelivery: delivery,
         pedidosFinalizadosComandas: comandas,
         produtosCadastrados: produtos,
         avaliacaoMedia: media,
@@ -161,20 +151,6 @@ export default function Dashboard() {
       console.error('Erro ao carregar dados do dashboard:', error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const carregarPedidosPendentes = async (): Promise<number> => {
-    try {
-      const pedidos = await pedidoService.buscarTodos()
-      // Contar pedidos que não estão finalizados
-      const pendentes = pedidos.filter(p =>
-        !['Finalizado', 'Entregue', 'Retirado', 'Cancelado'].includes(p.status)
-      )
-      return pendentes.length
-    } catch (error) {
-      console.error('Erro ao carregar pedidos pendentes:', error)
-      return 0
     }
   }
 
@@ -419,50 +395,18 @@ export default function Dashboard() {
       </div>
 
       {/* Cards principais com dados reais */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-indigo-600 to-indigo-700 text-white overflow-hidden relative">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-fuchsia-600 to-pink-600 text-white overflow-hidden relative">
           <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 relative z-10 py-1 px-3">
-            <CardTitle className="text-xs md:text-sm font-medium text-indigo-100">
-              Pedidos em Andamento
-            </CardTitle>
-            <Clock className="h-4 w-4 md:h-5 md:w-5 text-indigo-100" />
-          </CardHeader>
-          <CardContent className="relative z-10 py-1 px-3 pt-0">
-            <div className="text-lg md:text-x1 font-bold">{stats.pedidosPendentes}</div>
-            <p className="text-xs md:text-sm text-yellow-100">
-              Em preparo ou entrega
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-600 to-slate-700 text-white overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 relative z-10 py-1 px-3">
-            <CardTitle className="text-xs md:text-sm font-medium text-slate-200">
-              Entregas Finalizadas
-            </CardTitle>
-            <Truck className="h-4 w-4 md:h-5 md:w-5 text-slate-200" />
-          </CardHeader>
-          <CardContent className="relative z-10 py-1 px-3 pt-0">
-            <div className="text-lg md:text-xl font-bold">{stats.pedidosFinalizadosDelivery}</div>
-            <p className="text-xs md:text-sm text-slate-200">
-              {getPeriodoTexto()}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-violet-600 to-violet-700 text-white overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 relative z-10 py-1 px-3">
-            <CardTitle className="text-xs md:text-sm font-medium text-violet-100">
+            <CardTitle className="text-xs md:text-sm font-medium text-pink-100">
               Vendas PDV
             </CardTitle>
-            <ClipboardList className="h-4 w-4 md:h-5 md:w-5 text-violet-100" />
+            <ClipboardList className="h-4 w-4 md:h-5 md:w-5 text-pink-100" />
           </CardHeader>
           <CardContent className="relative z-10 py-1 px-3 pt-0">
             <div className="text-lg md:text-xl font-bold">{stats.pedidosFinalizadosComandas}</div>
-            <p className="text-xs md:text-sm text-violet-100">
+            <p className="text-xs md:text-sm text-pink-100">
               {getPeriodoTexto()}
             </p>
           </CardContent>
@@ -522,7 +466,7 @@ export default function Dashboard() {
         <Card className="border-0 shadow-lg bg-white">
           <CardHeader>
             <CardTitle className="text-xl text-gray-900 flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-indigo-600" />
+              <TrendingUp className="h-5 w-5 text-purple-600" />
               Produtos Mais Vendidos
             </CardTitle>
             <CardDescription className="text-gray-600">
@@ -555,7 +499,7 @@ export default function Dashboard() {
                         <div className={`absolute -bottom-0.5 -right-0.5 w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-white font-bold text-xs border-2 border-white shadow-md ${
                           index === 0 ? 'bg-yellow-500' :
                           index === 1 ? 'bg-gray-400' :
-                          index === 2 ? 'bg-orange-600' : 'bg-indigo-500'
+                          index === 2 ? 'bg-orange-600' : 'bg-purple-500'
                         }`}>
                           {index + 1}
                         </div>

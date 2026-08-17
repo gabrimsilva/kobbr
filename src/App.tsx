@@ -53,7 +53,7 @@ const PDV = lazy(() => import("@/pages/PDV"))
 const Comandas = lazy(() => import("@/pages/Comandas"))
 const HistoricoVendas = lazy(() => import("@/pages/HistoricoVendas"))
 const HistoricoComandas = lazy(() => import("@/pages/HistoricoComandas"))
-const DeliveryPage = lazy(() => import("@/pages/DeliveryPage"))
+const CatalogoPage = lazy(() => import("@/pages/CatalogoPage"))
 const CheckoutWrapper = lazy(() => import("@/components/CheckoutWrapper"))
 const ProcessandoPedido = lazy(() => import("@/pages/ProcessandoPedido"))
 const MeusPedidos = lazy(() => import("@/pages/MeusPedidos"))
@@ -311,8 +311,6 @@ function AdminSystem() {
           <Route path="/configuracoes-horario" element={<Configuracoes initialPage="horario" />} />
           <Route path="/configuracoes-pagamento" element={<Configuracoes initialPage="pagamento" />} />
           <Route path="/configuracoes-visuais" element={<Configuracoes initialPage="visuais" />} />
-          <Route path="/configuracoes-notificacao" element={<Configuracoes initialPage="notificacao" />} />
-          <Route path="/configuracoes-impressao" element={<Configuracoes initialPage="impressao" />} />
 
           {/* Multi-estabelecimento */}
           <Route path="/estabelecimentos" element={<Estabelecimentos />} />
@@ -342,18 +340,12 @@ function LoginPage() {
   )
 }
 
-// Componente principal da página de delivery
-function CustomerDeliveryPage() {
-  const handleNavigateToCheckout = () => {
-    window.location.href = '/checkout'
-  }
-
+// Componente principal da página de catálogo
+function CustomerCatalogoPage() {
   return (
     <EstabelecimentoPublicoProvider slug={undefined}>
       <Suspense fallback={<LoadingSpinner />}>
-        <DeliveryPage 
-          onNavigateToCheckout={handleNavigateToCheckout}
-        />
+        <CatalogoPage />
       </Suspense>
     </EstabelecimentoPublicoProvider>
   )
@@ -405,12 +397,12 @@ function AvaliarEstabelecimentoPage() {
 // ============================================================================
 // Fluxos públicos por slug (multi-estabelecimento) — /:slug, /:slug/checkout, /:slug/avaliar
 // ============================================================================
-function SlugDeliveryPage() {
+function SlugCatalogoPage() {
   const { slug } = useParams<{ slug: string }>()
   return (
     <EstabelecimentoPublicoProvider slug={slug}>
       <Suspense fallback={<LoadingSpinner />}>
-        <DeliveryPage onNavigateToCheckout={() => { window.location.href = `/${slug}/checkout` }} />
+        <CatalogoPage />
       </Suspense>
     </EstabelecimentoPublicoProvider>
   )
@@ -525,8 +517,8 @@ function App() {
         <Router>
           <PageTracker />
           <Routes>
-            {/* Página principal - DeliveryPage */}
-            <Route path="/" element={<CustomerDeliveryPage />} />
+            {/* Página principal - Catálogo */}
+            <Route path="/" element={<CustomerCatalogoPage />} />
 
             {/* Página de login premium */}
             <Route path="/admin/login-premium" element={
@@ -593,7 +585,7 @@ function App() {
             {/* Fluxos públicos por slug (multi-estabelecimento) */}
             <Route path="/:slug/checkout" element={<SlugCheckoutPage />} />
             <Route path="/:slug/avaliar" element={<SlugAvaliarPage />} />
-            <Route path="/:slug" element={<SlugDeliveryPage />} />
+            <Route path="/:slug" element={<SlugCatalogoPage />} />
 
             {/* Redirecionar rotas não encontradas para a página principal */}
             <Route path="*" element={<Navigate to="/" replace />} />

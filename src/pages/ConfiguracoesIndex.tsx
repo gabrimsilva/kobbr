@@ -7,8 +7,6 @@ import {
   Clock,
   CreditCard,
   Palette,
-  Bell,
-  Printer,
   ArrowLeft
 } from "lucide-react"
 
@@ -17,8 +15,6 @@ import ConfiguracoesGeraisPage from "@/pages/configuracoes/ConfiguracoesGeraisPa
 import ConfiguracoesHorarioPage from "@/pages/configuracoes/ConfiguracoesHorarioPage"
 import ConfiguracoesPagamentoPage from "@/pages/configuracoes/ConfiguracoesPagamentoPage"
 import ConfiguracoesVisuaisPage from "@/pages/configuracoes/ConfiguracoesVisuaisPage"
-import ConfiguracoesNotificacaoPage from "@/pages/configuracoes/ConfiguracoesNotificacaoPage"
-import ConfiguracoesImpressaoPage from "@/pages/configuracoes/ConfiguracoesImpressaoPage"
 
 type ConfigPage =
   | 'index'
@@ -26,8 +22,6 @@ type ConfigPage =
   | 'horario'
   | 'pagamento'
   | 'visuais'
-  | 'notificacao'
-  | 'impressao'
 
 interface ConfigCard {
   id: ConfigPage
@@ -43,28 +37,14 @@ const configCards: ConfigCard[] = [
     title: 'Loja',
     description: 'Nome, endereço, telefone e informações básicas',
     icon: <Store className="h-6 w-6" />,
-    color: 'text-indigo-600'
-  },
-  {
-    id: 'visuais',
-    title: 'Aparência',
-    description: 'Logo, banner e personalização visual',
-    icon: <Palette className="h-6 w-6" />,
-    color: 'text-indigo-600'
-  },
-  {
-    id: 'impressao',
-    title: 'Impressora',
-    description: 'Cupom fiscal e impressão automática',
-    icon: <Printer className="h-6 w-6" />,
-    color: 'text-gray-600'
+    color: 'text-purple-600'
   },
   {
     id: 'pagamento',
     title: 'Pagamentos',
     description: 'Formas de pagamento e configurações PIX',
     icon: <CreditCard className="h-6 w-6" />,
-    color: 'text-purple-600'
+    color: 'text-pink-600'
   },
   {
     id: 'horario',
@@ -74,11 +54,11 @@ const configCards: ConfigCard[] = [
     color: 'text-orange-600'
   },
   {
-    id: 'notificacao',
-    title: 'Notificações',
-    description: 'Sons e alertas de novos pedidos',
-    icon: <Bell className="h-6 w-6" />,
-    color: 'text-yellow-600'
+    id: 'visuais',
+    title: 'Aparência',
+    description: 'Logo, cores e personalização visual',
+    icon: <Palette className="h-6 w-6" />,
+    color: 'text-blue-600'
   }
 ]
 
@@ -118,8 +98,6 @@ export default function ConfiguracoesIndex({ initialPage = 'index' }: Configurac
         {currentPage === 'horario' && <ConfiguracoesHorarioPage />}
         {currentPage === 'pagamento' && <ConfiguracoesPagamentoPage />}
         {currentPage === 'visuais' && <ConfiguracoesVisuaisPage />}
-        {currentPage === 'notificacao' && <ConfiguracoesNotificacaoPage />}
-        {currentPage === 'impressao' && <ConfiguracoesImpressaoPage />}
       </div>
     )
   }
