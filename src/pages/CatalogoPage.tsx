@@ -7,8 +7,10 @@ import BotaoVoltarTopo from "@/components/delivery/BotaoVoltarTopo"
 import CatalogoProdutoCard, { type ProdutoCatalogo } from "@/components/delivery/CatalogoProdutoCard"
 import CatalogoProdutoModal from "@/components/CatalogoProdutoModal"
 import ModalInformacoesEstabelecimento from "@/components/ModalInformacoesEstabelecimento"
+import LojaStatusBadge from "@/components/LojaStatusBadge"
 import { ProdutoCardSkeletonGrid } from "@/components/skeletons/ProdutoCardSkeleton"
 import { produtoService, categoriaService, configuracaoService, supabase, type CategoriaSupabase } from "@/services"
+import { Info } from "lucide-react"
 
 export default function CatalogoPage() {
   const [produtos, setProdutos] = useState<ProdutoCatalogo[]>([])
@@ -188,18 +190,9 @@ export default function CatalogoPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Header */}
-      <Header
-        nomeEstabelecimento={configuracao.nomeEstabelecimento}
-        logoUrl={configuracao.logoUrl}
-        bannerUrl="" // Não mostrar banner no header, apenas na seção hero
-        onMaisInformacoes={() => setModalInfoAberto(true)}
-        showInfoButton={true} // Mostrar botão no catálogo
-      />
-
-      {/* Banner */}
+      {/* Banner com controles sobrepostos */}
       {configuracao.bannerUrl && (
-        <div className="w-full h-32 md:h-48 bg-gradient-to-r from-purple-600 to-pink-600 relative overflow-hidden">
+        <div className="w-full h-48 md:h-64 bg-gradient-to-r from-purple-600 to-pink-600 relative overflow-hidden">
           <img
             src={configuracao.bannerUrl}
             alt="Banner"
@@ -209,6 +202,18 @@ export default function CatalogoPage() {
               target.style.display = 'none'
             }}
           />
+          
+          {/* Controles sobrepostos */}
+          <div className="absolute top-4 right-4 flex items-center gap-3">
+            <LojaStatusBadge className="bg-white bg-opacity-95 shadow-md" />
+            <button
+              onClick={() => setModalInfoAberto(true)}
+              className="flex items-center gap-2 bg-white bg-opacity-95 px-4 py-2 rounded-full shadow-md text-purple-600 hover:text-purple-700 font-medium transition-colors cursor-pointer text-sm"
+            >
+              <Info className="h-4 w-4" />
+              <span>Mais informações</span>
+            </button>
+          </div>
         </div>
       )}
 
