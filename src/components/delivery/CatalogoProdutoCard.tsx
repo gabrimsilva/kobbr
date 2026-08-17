@@ -51,7 +51,7 @@ function CatalogoProdutoCard({
 
   return (
     <Card 
-      className={`overflow-hidden hover:shadow-lg transition-all duration-300 border border-purple-100 p-0 rounded-2xl ${!produto.estoqueDisponivel ? 'opacity-60' : ''}`}
+      className="overflow-hidden hover:shadow-lg transition-all duration-300 border border-purple-100 p-0 rounded-2xl"
       style={{ cursor: 'url(/pointer.png), pointer' }}
       onClick={() => onAbrirDetalhes(produto)}
     >
@@ -83,7 +83,7 @@ function CatalogoProdutoCard({
           <img
             src={produto.urlImagem}
             alt={produto.nome}
-            className={`w-full h-full object-cover rounded-lg ${!produto.estoqueDisponivel ? 'grayscale' : ''}`}
+            className="w-full h-full object-cover rounded-lg"
             onError={(e) => {
               const target = e.target as HTMLImageElement
               target.src = '/placeholder-food.svg'
