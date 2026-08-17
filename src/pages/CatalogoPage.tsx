@@ -192,7 +192,7 @@ export default function CatalogoPage() {
       <Header
         nomeEstabelecimento={configuracao.nomeEstabelecimento}
         logoUrl={configuracao.logoUrl}
-        bannerUrl={configuracao.bannerUrl}
+        bannerUrl="" // Não mostrar banner no header, apenas na seção hero
         onMaisInformacoes={() => setModalInfoAberto(true)}
         showInfoButton={true} // Mostrar botão no catálogo
       />
