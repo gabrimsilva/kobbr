@@ -57,8 +57,15 @@ function CatalogoProdutoCard({
     >
       {/* Layout horizontal */}
       <div className="flex items-center relative">
+        {/* Badge de Sem Estoque */}
+        {produto.quantidadeEstoque === 0 && (
+          <div className="absolute top-2 left-2 z-10 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
+            SEM ESTOQUE
+          </div>
+        )}
+
         {/* Badge de Indisponível */}
-        {!produto.estoqueDisponivel && (
+        {!produto.estoqueDisponivel && produto.quantidadeEstoque !== 0 && (
           <div className="absolute top-2 left-2 z-10 bg-gradient-to-r from-red-500 to-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-md">
             INDISPONÍVEL
           </div>

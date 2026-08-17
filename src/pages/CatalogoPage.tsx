@@ -68,6 +68,21 @@ export default function CatalogoPage() {
 
       console.log('✅ Categorias retornadas do Supabase:', categoriasData?.length || 0)
 
+      // Buscar estoque de todos os produtos
+      const { data: estoqueData, error: estoqueError } = await supabase
+        .from('estoque')
+        .select('produto_id, saldo')
+
+      if (estoqueError) {
+        console.warn('⚠️ Erro ao buscar estoque:', estoqueError)
+      }
+
+      // Criar mapa de estoque por produto_id
+      const estoqueMap = new Map<string, number>()
+      estoqueData?.forEach(e => {
+        estoqueMap.set(e.produto_id, e.saldo || 0)
+      })
+
       const configsMap = await configuracaoService.buscarMultiplas([
         'nome_estabelecimento',
         'logo_url',
@@ -80,17 +95,20 @@ export default function CatalogoPage() {
       // Converter produtos para formato do catálogo
       const produtosCatalogo: ProdutoCatalogo[] = (produtosData || [])
         .filter(p => p.ativo)
-        .map(p => ({
-          id: p.id,
-          nome: p.nome,
-          descricao: p.descricao || '',
-          preco: p.preco,
-          precoPromocional: p.preco_promocional,
-          categoria: p.categoria_nome || 'Outros',
-          urlImagem: p.imagem_path || '/placeholder-food.svg',
-          estoqueDisponivel: true, // Sempre disponível no catálogo
-          quantidadeEstoque: 999
-        }))
+        .map(p => {
+          const saldoEstoque = estoqueMap.get(p.id) ?? 0
+          return {
+            id: p.id,
+            nome: p.nome,
+            descricao: p.descricao || '',
+            preco: p.preco,
+            precoPromocional: p.preco_promocional,
+            categoria: p.categoria_nome || 'Outros',
+            urlImagem: p.imagem_path || '/placeholder-food.svg',
+            estoqueDisponivel: saldoEstoque > 0,
+            quantidadeEstoque: saldoEstoque
+          }
+        })
 
       console.log('📦 Produtos carregados:', produtosCatalogo.length)
       console.log('🏷️ Categorias carregadas:', categoriasData.length)
