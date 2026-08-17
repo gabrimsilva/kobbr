@@ -70,17 +70,19 @@ export default function CatalogoPage() {
 
       // Buscar estoque de todos os produtos
       const { data: estoqueData, error: estoqueError } = await supabase
-        .from('estoque')
-        .select('produto_id, saldo')
+        .from('stock_items')
+        .select('product_id, quantidade')
 
       if (estoqueError) {
         console.warn('⚠️ Erro ao buscar estoque:', estoqueError)
       }
 
-      // Criar mapa de estoque por produto_id
+      // Criar mapa de estoque por product_id
       const estoqueMap = new Map<string, number>()
       estoqueData?.forEach(e => {
-        estoqueMap.set(e.produto_id, e.saldo || 0)
+        // quantidade é string no banco, converter para número
+        const qtd = parseFloat(e.quantidade) || 0
+        estoqueMap.set(e.product_id, qtd)
       })
 
       const configsMap = await configuracaoService.buscarMultiplas([
