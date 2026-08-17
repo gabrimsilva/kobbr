@@ -209,12 +209,6 @@ export default function CatalogoPage() {
               target.style.display = 'none'
             }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-900/50 to-pink-900/50 flex items-center justify-center">
-            <div className="text-center text-white">
-              <h1 className="text-3xl md:text-5xl font-bold mb-2">Catálogo de Produtos</h1>
-              <p className="text-lg md:text-xl">Térmicas Atacado - Qualidade e Preço</p>
-            </div>
-          </div>
         </div>
       )}
 
