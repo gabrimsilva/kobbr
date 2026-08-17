@@ -59,7 +59,7 @@ export const useLojaStatus = () => {
         if (!mounted) return
         setLoading(true)
         
-        const config = await configuracaoService.buscarPorChave('horarios_funcionamento')
+        const config = await configuracaoService.buscarPorChave('horario_funcionamento')
         
         if (!mounted) return
         
@@ -114,7 +114,7 @@ export const useLojaStatus = () => {
   const recarregar = async () => {
     setLoading(true)
     try {
-      const config = await configuracaoService.buscarPorChave('horarios_funcionamento')
+      const config = await configuracaoService.buscarPorChave('horario_funcionamento')
       
       let horariosData: DiaDaSemana[]
       

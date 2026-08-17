@@ -32,8 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { CalendarIcon, TrendingUp, DollarSign, ShoppingCart, Package, Wallet, Loader2 } from "lucide-react"
+import { CalendarIcon, TrendingUp, DollarSign, ShoppingCart, Package } from "lucide-react"
 import { format, subDays, startOfDay, endOfDay } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
@@ -66,17 +65,9 @@ interface MetricasResumo {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D']
 
-/** Chave em `configuracoes` que guarda o valor de abertura de caixa (troco). */
-const CHAVE_CAIXA_ABERTURA = 'caixa_abertura_valor'
-
 export default function Metricas() {
   const { perfil } = usePermissoes()
   const ehAdminGeral = perfil === 'administrador_geral'
-
-  // Usuário logado — usado para identificar quem mexeu no caixa na auditoria
-  const { usuario: usuarioAuditoria } = useEstabelecimento()
-  const identificacaoUsuario =
-    usuarioAuditoria?.nome || usuarioAuditoria?.email || 'Usuário não identificado'
 
   const [periodo, setPeriodo] = useState<string>("7")
   const [dataInicio, setDataInicio] = useState<Date>(subDays(new Date(), 7))
@@ -89,23 +80,9 @@ export default function Metricas() {
   const [filtroFormaPagamento, setFiltroFormaPagamento] = useState<string>("TODAS")
   const [filtroTipoVenda, setFiltroTipoVenda] = useState<string>("TODOS")
 
-  // Filtro de estabelecimento (somente Admin Geral) — Req 8.2
-  // "TODOS" = visão combinada de todos os estabelecimentos.
+  // Filtro de estabelecimento (somente Admin Geral)
   const [filtroEstab, setFiltroEstab] = useState<string>(() => getEstabelecimentoAtivo() ?? "TODOS")
   const [estabs, setEstabs] = useState<Estabelecimento[]>([])
-
-  // ---------------------------------------------------------------------------
-  // Abertura de caixa (troco em dinheiro)
-  //
-  // Versão simples: um único valor por estabelecimento, guardado em
-  // `configuracoes` sob a chave CHAVE_CAIXA_ABERTURA. Não movimenta estoque nem
-  // vendas — é apenas o registro do dinheiro que ficou na gaveta para troco.
-  // ---------------------------------------------------------------------------
-  const [valorCaixa, setValorCaixa] = useState<string>("")
-  // Valor atualmente persistido — usado para registrar o "valor anterior" na auditoria
-  const [valorCaixaSalvo, setValorCaixaSalvo] = useState<string>("")
-  const [caixaRegistradoEm, setCaixaRegistradoEm] = useState<string | null>(null)
-  const [salvandoCaixa, setSalvandoCaixa] = useState(false)
 
   // Carregar lista de estabelecimentos (apenas Admin Geral)
   useEffect(() => {
@@ -115,123 +92,6 @@ export default function Metricas() {
       .then(setEstabs)
       .catch((err) => console.error("Erro ao carregar estabelecimentos:", err))
   }, [ehAdminGeral])
-
-  // Carregar o valor de caixa já registrado para o estabelecimento ativo
-  useEffect(() => {
-    let cancelado = false
-
-    configuracaoService
-      .buscarPorChave(CHAVE_CAIXA_ABERTURA)
-      .then((config) => {
-        if (cancelado) return
-        const valor = config?.valor?.trim() || ""
-        setValorCaixa(valor)
-        setValorCaixaSalvo(valor)
-        setCaixaRegistradoEm(valor ? config?.atualizado_em ?? null : null)
-      })
-      .catch((err) => console.error("Erro ao carregar valor de caixa:", err))
-
-    return () => {
-      cancelado = true
-    }
-  }, [])
-
-  const salvarValorCaixa = async () => {
-    const valorNumerico = Number(valorCaixa.replace(',', '.'))
-
-    if (!valorCaixa.trim() || Number.isNaN(valorNumerico) || valorNumerico < 0) {
-      toast.error('Informe um valor de caixa válido')
-      return
-    }
-
-    try {
-      setSalvandoCaixa(true)
-
-      const valorAnterior = valorCaixaSalvo
-
-      const config = await configuracaoService.salvar(
-        CHAVE_CAIXA_ABERTURA,
-        String(valorNumerico),
-        'Valor de abertura de caixa (troco em dinheiro)',
-        'numero',
-        'caixa'
-      )
-
-      setValorCaixa(String(valorNumerico))
-      setValorCaixaSalvo(String(valorNumerico))
-      setCaixaRegistradoEm(config?.atualizado_em ?? new Date().toISOString())
-
-      // Auditoria (não bloqueante — auditoriaService nunca lança)
-      const anteriorTexto = valorAnterior
-        ? formatarMoeda(Number(valorAnterior))
-        : 'nenhum valor'
-      await auditoriaService.registrar({
-        acao: 'caixa.abertura.registrar',
-        descricao:
-          `${identificacaoUsuario} registrou o caixa (troco) em ${formatarMoeda(valorNumerico)} ` +
-          `(valor anterior: ${anteriorTexto})`,
-        metadata: {
-          chave: CHAVE_CAIXA_ABERTURA,
-          valor_anterior: valorAnterior === '' ? null : Number(valorAnterior),
-          valor_novo: valorNumerico,
-          usuario_nome: usuarioAuditoria?.nome ?? null,
-          usuario_email: usuarioAuditoria?.email ?? null
-        }
-      })
-
-      toast.success('Valor do caixa salvo')
-    } catch (err) {
-      console.error('Erro ao salvar valor de caixa:', err)
-      toast.error(err instanceof Error ? err.message : 'Erro ao salvar valor do caixa')
-    } finally {
-      setSalvandoCaixa(false)
-    }
-  }
-
-  const limparValorCaixa = async () => {
-    try {
-      setSalvandoCaixa(true)
-
-      const valorAnterior = valorCaixaSalvo
-
-      // Guarda string vazia em vez de apagar a linha: mantém a configuração
-      // existente e o histórico de atualização no próprio registro.
-      await configuracaoService.salvar(
-        CHAVE_CAIXA_ABERTURA,
-        '',
-        'Valor de abertura de caixa (troco em dinheiro)',
-        'numero',
-        'caixa'
-      )
-
-      setValorCaixa('')
-      setValorCaixaSalvo('')
-      setCaixaRegistradoEm(null)
-
-      // Auditoria (não bloqueante — auditoriaService nunca lança)
-      const anteriorTexto = valorAnterior
-        ? formatarMoeda(Number(valorAnterior))
-        : 'nenhum valor'
-      await auditoriaService.registrar({
-        acao: 'caixa.abertura.limpar',
-        descricao: `${identificacaoUsuario} limpou o caixa (troco). Valor removido: ${anteriorTexto}`,
-        metadata: {
-          chave: CHAVE_CAIXA_ABERTURA,
-          valor_anterior: valorAnterior === '' ? null : Number(valorAnterior),
-          valor_novo: null,
-          usuario_nome: usuarioAuditoria?.nome ?? null,
-          usuario_email: usuarioAuditoria?.email ?? null
-        }
-      })
-
-      toast.success('Valor do caixa limpo')
-    } catch (err) {
-      console.error('Erro ao limpar valor de caixa:', err)
-      toast.error(err instanceof Error ? err.message : 'Erro ao limpar valor do caixa')
-    } finally {
-      setSalvandoCaixa(false)
-    }
-  }
 
   // Estabelecimento usado para filtrar as métricas:
   // - Admin Geral: respeita o seletor ("TODOS" => null => combina tudo)
@@ -789,63 +649,6 @@ export default function Metricas() {
                   Limpar filtros
                 </Button>
               )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card de Caixa (troco) - Compacto */}
-        <Card className="border-green-200 bg-gradient-to-br from-green-50/60 to-emerald-50/30">
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <Wallet className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-medium text-green-900">Caixa (troco)</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xl font-bold text-green-600">
-                      {formatarMoeda(Number(valorCaixaSalvo) || 0)}
-                    </span>
-                    {caixaRegistradoEm && (
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(caixaRegistradoEm), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                    R$
-                  </span>
-                  <Input
-                    id="caixa-abertura"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    inputMode="decimal"
-                    value={valorCaixa}
-                    onChange={(e) => setValorCaixa(e.target.value)}
-                    placeholder="0,00"
-                    disabled={salvandoCaixa}
-                    className="w-[100px] pl-9 h-9"
-                  />
-                </div>
-
-                <Button onClick={salvarValorCaixa} disabled={salvandoCaixa} size="sm">
-                  {salvandoCaixa ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={limparValorCaixa}
-                  disabled={salvandoCaixa || (!valorCaixa && !caixaRegistradoEm)}
-                >
-                  Limpar
-                </Button>
-              </div>
             </div>
           </CardContent>
         </Card>

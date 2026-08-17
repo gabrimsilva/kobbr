@@ -6,6 +6,7 @@ import FiltroCategorias from "@/components/delivery/FiltroCategorias"
 import BotaoVoltarTopo from "@/components/delivery/BotaoVoltarTopo"
 import CatalogoProdutoCard, { type ProdutoCatalogo } from "@/components/delivery/CatalogoProdutoCard"
 import CatalogoProdutoModal from "@/components/CatalogoProdutoModal"
+import ModalInformacoesEstabelecimento from "@/components/ModalInformacoesEstabelecimento"
 import { ProdutoCardSkeletonGrid } from "@/components/skeletons/ProdutoCardSkeleton"
 import { produtoService, categoriaService, configuracaoService, supabase, type CategoriaSupabase } from "@/services"
 
@@ -17,11 +18,14 @@ export default function CatalogoPage() {
     nomeEstabelecimento: 'KOBE E-Commerce',
     logoUrl: '',
     bannerUrl: '',
-    telefone: ''
+    telefone: '',
+    email: '',
+    horarioFuncionamento: ''
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modalDetalhesAberto, setModalDetalhesAberto] = useState(false)
+  const [modalInfoAberto, setModalInfoAberto] = useState(false)
   const [produtoSelecionado, setProdutoSelecionado] = useState<ProdutoCatalogo | null>(null)
 
   // Carregar dados iniciais
@@ -34,30 +38,47 @@ export default function CatalogoPage() {
       setLoading(true)
       setError(null)
 
-      const [produtosData, categoriasData, configsMap] = await Promise.all([
-        // Buscar produtos diretamente sem tenant filter para o catálogo público
-        supabase
-          .from('produtos')
-          .select('*')
-          .eq('ativo', true)
-          .eq('estabelecimento_id', 'e1cb89b8-8ccb-49b4-85f6-1badc1d396ae')
-          .order('categoria_nome', { ascending: true })
-          .order('nome', { ascending: true })
-          .then(({ data, error }) => {
-            if (error) throw error
-            return data || []
-          }),
-        categoriaService.buscarAtivas(),
-        configuracaoService.buscarMultiplas([
-          'nome_estabelecimento',
-          'logo_url',
-          'banner_url',
-          'telefone'
-        ])
+      // Buscar produtos diretamente - SEM filtro de estabelecimento para catálogo público
+      console.log('🔍 Buscando produtos ativos (catálogo público)')
+      
+      const { data: produtosData, error: produtosError } = await supabase
+        .from('produtos')
+        .select('*')
+        .eq('ativo', true)
+        .order('categoria_nome', { ascending: true })
+        .order('nome', { ascending: true })
+
+      if (produtosError) {
+        console.error('❌ Erro ao buscar produtos:', produtosError)
+        throw produtosError
+      }
+
+      console.log('✅ Produtos retornados do Supabase:', produtosData?.length || 0)
+
+      const { data: categoriasData, error: categoriasError } = await supabase
+        .from('categorias')
+        .select('*')
+        .eq('ativa', true)
+        .order('nome', { ascending: true })
+
+      if (categoriasError) {
+        console.error('❌ Erro ao buscar categorias:', categoriasError)
+        throw categoriasError
+      }
+
+      console.log('✅ Categorias retornadas do Supabase:', categoriasData?.length || 0)
+
+      const configsMap = await configuracaoService.buscarMultiplas([
+        'nome_estabelecimento',
+        'logo_url',
+        'banner_url',
+        'telefone',
+        'email',
+        'horario_funcionamento'
       ])
 
       // Converter produtos para formato do catálogo
-      const produtosCatalogo: ProdutoCatalogo[] = produtosData
+      const produtosCatalogo: ProdutoCatalogo[] = (produtosData || [])
         .filter(p => p.ativo)
         .map(p => ({
           id: p.id,
@@ -77,19 +98,25 @@ export default function CatalogoPage() {
       console.log('Categorias:', categoriasData)
       
       setProdutos(produtosCatalogo)
-      setCategorias(categoriasData)
+      setCategorias(categoriasData || [])
 
       // Configurações
       const nomeEstab = configsMap.get('nome_estabelecimento')?.valor || 'KOBE E-Commerce'
       const logoUrl = configsMap.get('logo_url')?.valor || ''
       const bannerUrl = configsMap.get('banner_url')?.valor || ''
       const telefone = configsMap.get('telefone')?.valor || ''
+      const email = configsMap.get('email')?.valor || ''
+      const horarioFuncionamento = configsMap.get('horario_funcionamento')?.valor || ''
+
+      console.log('📞 Telefone WhatsApp carregado:', telefone)
 
       setConfiguracao({
         nomeEstabelecimento: nomeEstab,
         logoUrl,
         bannerUrl,
-        telefone
+        telefone,
+        email,
+        horarioFuncionamento
       })
 
     } catch (err) {
@@ -113,7 +140,11 @@ export default function CatalogoPage() {
   // Filtrar produtos por categoria
   const produtosFiltrados = categoriaAtiva === 'todos'
     ? produtos
-    : produtos.filter(p => p.categoria.toLowerCase() === categoriaAtiva.toLowerCase())
+    : produtos.filter(p => {
+        // Buscar nome da categoria pelo ID
+        const categoria = categorias.find(c => c.id === categoriaAtiva)
+        return categoria ? p.categoria.toLowerCase() === categoria.nome.toLowerCase() : false
+      })
 
   // Agrupar produtos por categoria
   const produtosAgrupados = categorias.reduce((acc, cat) => {
@@ -131,8 +162,8 @@ export default function CatalogoPage() {
 
   const obterNomeCategoria = (categoriaId: string): string => {
     if (categoriaId === 'todos') return 'Todos os Produtos'
-    const cat = categorias.find(c => c.nome.toLowerCase() === categoriaId.toLowerCase())
-    return cat?.nome || categoriaId
+    const cat = categorias.find(c => c.id === categoriaId)
+    return cat?.nome || 'Categoria'
   }
 
   return (
@@ -142,7 +173,8 @@ export default function CatalogoPage() {
         nomeEstabelecimento={configuracao.nomeEstabelecimento}
         logoUrl={configuracao.logoUrl}
         bannerUrl={configuracao.bannerUrl}
-        onMaisInformacoes={() => {}} // Pode adicionar modal de info depois
+        onMaisInformacoes={() => setModalInfoAberto(true)}
+        showInfoButton={true} // Mostrar botão no catálogo
       />
 
       {/* Banner */}
@@ -250,6 +282,16 @@ export default function CatalogoPage() {
         onClose={handleFecharModal}
         produto={produtoSelecionado}
         whatsapp={configuracao.telefone}
+      />
+
+      {/* Modal de Informações */}
+      <ModalInformacoesEstabelecimento
+        isOpen={modalInfoAberto}
+        onClose={() => setModalInfoAberto(false)}
+        nomeEstabelecimento={configuracao.nomeEstabelecimento}
+        telefone={configuracao.telefone}
+        email={configuracao.email}
+        horarioFuncionamento={configuracao.horarioFuncionamento}
       />
 
       {/* Cookie Consent */}

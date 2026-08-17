@@ -46,7 +46,7 @@ export default function ConfiguracoesHorarioPage() {
       const configuracoes = await configuracaoService.buscarTodas()
       
       configuracoes.forEach(cfg => {
-        if (cfg.chave === 'horarios_funcionamento') {
+        if (cfg.chave === 'horario_funcionamento') {
           try {
             const horarios = JSON.parse(cfg.valor)
             if (Array.isArray(horarios) && horarios.length === 7) {
@@ -71,7 +71,7 @@ export default function ConfiguracoesHorarioPage() {
       setSaving(true)
 
       await Promise.all([
-        configuracaoService.salvar('horarios_funcionamento', JSON.stringify(diasSemana), 'Horários de funcionamento', 'json', 'sistema'),
+        configuracaoService.salvar('horario_funcionamento', JSON.stringify(diasSemana), 'Horários de funcionamento', 'json', 'sistema'),
         configuracaoService.salvar('trabalha_feriado', trabalhaFeriado.toString(), 'Trabalha em feriados', 'booleano', 'sistema')
       ])
 

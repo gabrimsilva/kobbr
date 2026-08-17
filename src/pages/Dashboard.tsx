@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils"
 import { produtoService, supabase, getEstabelecimentoAtivo } from "@/services"
 
 interface DashboardStats {
-  pedidosFinalizadosComandas: number
+  unidadesVendidasPDV: number
   produtosCadastrados: number
   avaliacaoMedia: number
   totalAvaliacoes: number
@@ -43,7 +43,7 @@ interface ProdutoFavorito {
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
-    pedidosFinalizadosComandas: 0,
+    unidadesVendidasPDV: 0,
     produtosCadastrados: 0,
     avaliacaoMedia: 0,
     totalAvaliacoes: 0
@@ -127,19 +127,19 @@ export default function Dashboard() {
 
       // Carregar dados em paralelo
       const [
-        { comandas },
+        unidadesPDV,
         produtos,
         produtosFavoritosData,
         { media, total }
       ] = await Promise.all([
-        carregarPedidosFinalizados(inicio, fim),
+        carregarUnidadesVendidasPDV(inicio, fim),
         carregarProdutosCadastrados(),
         carregarProdutosFavoritos(inicio, fim),
         carregarAvaliacaoMedia()
       ])
 
       setStats({
-        pedidosFinalizadosComandas: comandas,
+        unidadesVendidasPDV: unidadesPDV,
         produtosCadastrados: produtos,
         avaliacaoMedia: media,
         totalAvaliacoes: total
@@ -154,24 +154,13 @@ export default function Dashboard() {
     }
   }
 
-  const carregarPedidosFinalizados = async (inicio: Date, fim: Date): Promise<{ delivery: number, comandas: number }> => {
+  const carregarUnidadesVendidasPDV = async (inicio: Date, fim: Date): Promise<number> => {
     try {
       const estabId = getEstabelecimentoAtivo()
-      // Buscar pedidos delivery do histórico
-      let deliveryQuery = supabase
-        .from('historico_geral')
-        .select('id')
-        .gte('criado_em', inicio.toISOString())
-        .lte('criado_em', fim.toISOString())
-      if (estabId) deliveryQuery = deliveryQuery.eq('estabelecimento_id', estabId)
-      const { data: deliveryData, error: deliveryError } = await deliveryQuery
-
-      if (deliveryError) throw deliveryError
-
       // Buscar vendas PDV (tabela sales, tipo PDV)
       let pdvQuery = supabase
         .from('sales')
-        .select('id')
+        .select('items')
         .eq('sale_type', 'PDV')
         .gte('created_at', inicio.toISOString())
         .lte('created_at', fim.toISOString())
@@ -180,13 +169,16 @@ export default function Dashboard() {
 
       if (pdvError) throw pdvError
 
-      return {
-        delivery: deliveryData?.length || 0,
-        comandas: pdvData?.length || 0
-      }
+      // Contar unidades vendidas (soma das quantidades)
+      const unidades = (pdvData || []).reduce((sum, venda) => {
+        const itens = Array.isArray(venda.items) ? venda.items : []
+        return sum + itens.reduce((itemSum: number, item: any) => itemSum + (item.quantidade || 0), 0)
+      }, 0)
+
+      return unidades
     } catch (error) {
-      console.error('Erro ao carregar pedidos finalizados:', error)
-      return { delivery: 0, comandas: 0 }
+      console.error('Erro ao carregar unidades vendidas PDV:', error)
+      return 0
     }
   }
 
@@ -400,12 +392,12 @@ export default function Dashboard() {
           <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10"></div>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0 relative z-10 py-1 px-3">
             <CardTitle className="text-xs md:text-sm font-medium text-pink-100">
-              Vendas PDV
+              Produtos Vendidos
             </CardTitle>
             <ClipboardList className="h-4 w-4 md:h-5 md:w-5 text-pink-100" />
           </CardHeader>
           <CardContent className="relative z-10 py-1 px-3 pt-0">
-            <div className="text-lg md:text-xl font-bold">{stats.pedidosFinalizadosComandas}</div>
+            <div className="text-lg md:text-xl font-bold">{stats.unidadesVendidasPDV}</div>
             <p className="text-xs md:text-sm text-pink-100">
               {getPeriodoTexto()}
             </p>

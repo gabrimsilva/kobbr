@@ -8,6 +8,7 @@ interface HeaderProps {
   onMaisInformacoes: () => void
   showBackButton?: boolean
   onBack?: () => void
+  showInfoButton?: boolean // Controla se mostra o botão "Mais informações"
 }
 
 export default function Header({
@@ -16,7 +17,8 @@ export default function Header({
   bannerUrl,
   onMaisInformacoes,
   showBackButton = false,
-  onBack
+  onBack,
+  showInfoButton = true
 }: HeaderProps) {
   return (
     <div
@@ -92,15 +94,17 @@ export default function Header({
         </div>
 
         {/* Botão "Mais informações" com fundo branco semi-transparente */}
-        <div className="inline-block bg-white bg-opacity-95 px-6 py-3 rounded-2xl shadow-md">
-          <button
-            onClick={onMaisInformacoes}
-            className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-medium transition-colors cursor-pointer text-sm"
-          >
-            <Info className="h-4 w-4" />
-            <span>Mais informações</span>
-          </button>
-        </div>
+        {showInfoButton && (
+          <div className="inline-block bg-white bg-opacity-95 px-6 py-3 rounded-2xl shadow-md">
+            <button
+              onClick={onMaisInformacoes}
+              className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-medium transition-colors cursor-pointer text-sm"
+            >
+              <Info className="h-4 w-4" />
+              <span>Mais informações</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

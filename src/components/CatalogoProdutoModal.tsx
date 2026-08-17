@@ -32,9 +32,25 @@ export default function CatalogoProdutoModal({
   const temPromocao = produto.precoPromocional && produto.precoPromocional > 0
 
   const handleWhatsApp = () => {
-    const mensagem = `Olá! Vi o produto *${produto.nome}* no catálogo e gostaria de mais informações. Pode me ajudar?`
+    console.log('🔍 Dados WhatsApp:')
+    console.log('  - Telefone recebido:', whatsapp)
+    console.log('  - Produto:', produto.nome)
+    
+    if (!whatsapp || whatsapp.trim() === '') {
+      console.error('❌ WhatsApp não configurado!')
+      alert('WhatsApp não configurado. Entre em contato pelo site.')
+      return
+    }
+    
+    // Mensagem simples sem emojis para evitar problemas de codificação
+    const mensagem = `Olá! Vi o produto *${produto.nome}* no catálogo e fiquei interessado(a)!\n\nPoderia me passar mais informações sobre disponibilidade e formas de pagamento?\n\nAguardo retorno!`
     const whatsappClean = whatsapp.replace(/\D/g, '') // Remove caracteres não numéricos
     const url = `https://wa.me/55${whatsappClean}?text=${encodeURIComponent(mensagem)}`
+    
+    console.log('  - Telefone limpo:', whatsappClean)
+    console.log('  - URL gerada:', url)
+    console.log('  - Mensagem:', mensagem)
+    
     window.open(url, '_blank')
   }
 
