@@ -201,7 +201,9 @@ export default function Metricas() {
       // Vendas registradas em 'sales' (PDV + Delivery)
       const faturamentoSales = vendasData.reduce((sum, v) => sum + (parseFloat(v.total_amount) || 0), 0)
       const quantidadeSales = vendasData.length
+      // Unidades vendidas: exclui consumo interno (não é venda), igual ao faturamento e ao lucro
       const unidadesSales = vendasData.reduce((sum, venda) => {
+        if (venda.sale_type === 'INTERNAL_CONSUMPTION') return sum
         const itens = Array.isArray(venda.items) ? venda.items : []
         return sum + itens.reduce((itemSum: number, item: any) => itemSum + (item.quantidade || 0), 0)
       }, 0)
@@ -393,6 +395,33 @@ export default function Metricas() {
 
       let custoTotalVendas = 0
 
+      // 🔍 DIAGNÓSTICO: acumula receita x custo por produto para identificar
+      // itens com custo cadastrado acima do preço de venda (causa de lucro negativo)
+      const diagnosticoMargem = new Map<string, {
+        origem: string
+        unidades: number
+        receita: number
+        custoUnitario: number
+        custoTotal: number
+      }>()
+
+      const registrarDiagnostico = (
+        nome: string,
+        origem: string,
+        quantidade: number,
+        receita: number,
+        custoUnitario: number
+      ) => {
+        const atual = diagnosticoMargem.get(nome)
+        diagnosticoMargem.set(nome, {
+          origem: atual && atual.origem !== origem ? 'Ambos' : origem,
+          unidades: (atual?.unidades || 0) + quantidade,
+          receita: (atual?.receita || 0) + receita,
+          custoUnitario,
+          custoTotal: (atual?.custoTotal || 0) + custoUnitario * quantidade
+        })
+      }
+
       // Custo das vendas em 'sales' (PDV + Delivery, excluindo consumo interno)
       vendasData.forEach(venda => {
         if (venda.sale_type === 'INTERNAL_CONSUMPTION') return
@@ -407,6 +436,16 @@ export default function Metricas() {
             ? parseFloat(custoNoJson) || 0
             : (produtoId ? custosMapProdutos.get(produtoId) || 0 : 0)
           custoTotalVendas += custo * quantidade
+
+          const precoUnitario = item.precoUnitario || item.produto?.preco || 0
+          const receitaItem = item.precoTotal || quantidade * precoUnitario
+          registrarDiagnostico(
+            item.produto?.nome || 'Produto sem nome',
+            venda.sale_type === 'DELIVERY' ? 'Delivery' : 'PDV',
+            quantidade,
+            receitaItem,
+            custo
+          )
         })
       })
 
@@ -452,6 +491,16 @@ export default function Metricas() {
               ? parseFloat(custoNoJson) || 0
               : (produtoId ? custosMapProdutos.get(produtoId) || 0 : 0)
             custoTotalVendas += custo * quantidade
+
+            const precoUnitario = item.precoUnitario || item.produto?.preco || 0
+            const receitaItem = item.precoTotal || quantidade * precoUnitario
+            registrarDiagnostico(
+              item.produto?.nome || 'Produto sem nome',
+              'Comanda',
+              quantidade,
+              receitaItem,
+              custo
+            )
           })
         })
       }
@@ -464,6 +513,36 @@ export default function Metricas() {
         lucroTotal,
         margemLucro: faturamentoTotal > 0 ? ((lucroTotal / faturamentoTotal) * 100).toFixed(2) + '%' : '0%'
       })
+
+      // 🔍 DIAGNÓSTICO DE MARGEM: lista produtos ordenados do maior prejuízo
+      // para o maior lucro. Custo unitário acima do preço unitário indica
+      // cadastro de custo incorreto (ex.: custo da caixa/fardo em vez do custo da unidade).
+      const relatorioMargem = Array.from(diagnosticoMargem.entries())
+        .map(([nome, d]) => ({
+          Produto: nome,
+          Origem: d.origem,
+          Unid: d.unidades,
+          'Preço médio': +(d.unidades > 0 ? d.receita / d.unidades : 0).toFixed(2),
+          'Custo unit.': +d.custoUnitario.toFixed(2),
+          Receita: +d.receita.toFixed(2),
+          Custo: +d.custoTotal.toFixed(2),
+          Margem: +(d.receita - d.custoTotal).toFixed(2)
+        }))
+        .sort((a, b) => a.Margem - b.Margem)
+
+      const itensNoPrejuizo = relatorioMargem.filter(i => i.Margem < 0)
+
+      console.log('🔍 [LUCRO] Margem por produto (do pior para o melhor):')
+      console.table(relatorioMargem)
+
+      if (itensNoPrejuizo.length > 0) {
+        console.warn(
+          `⚠️ [LUCRO] ${itensNoPrejuizo.length} produto(s) com custo acima da receita, somando R$ ` +
+          Math.abs(itensNoPrejuizo.reduce((s, i) => s + i.Margem, 0)).toFixed(2) +
+          ' de prejuízo. Confira o campo "custo" no cadastro desses produtos:',
+          itensNoPrejuizo.map(i => `${i.Produto} (custo R$ ${i['Custo unit.']} x preço R$ ${i['Preço médio']})`)
+        )
+      }
 
       setMetricas({
         faturamentoTotal,

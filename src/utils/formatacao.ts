@@ -106,3 +106,122 @@ export function removerFormatacao(value: string): string {
   if (!value) return ''
   return value.replace(/\D/g, '')
 }
+
+/**
+ * Normaliza a digitação de um valor monetário, aceitando vírgula ou ponto
+ * como separador decimal e removendo separadores de milhar.
+ *
+ * Mantém o texto "em edição" (não converte para número) para que o usuário
+ * consiga digitar livremente, inclusive valores incompletos como '11,'.
+ *
+ * Regras:
+ * - Aceita apenas dígitos, vírgula e ponto
+ * - O ÚLTIMO separador digitado é tratado como decimal; os anteriores são milhar
+ * - Sempre devolve o decimal como '.' para ser aceito por parseFloat
+ * - Limita a 2 casas decimais
+ *
+ * @param value - Texto digitado pelo usuário
+ * @returns Texto normalizado, seguro para parseFloat
+ * @example
+ * normalizarEntradaMoeda('11,50')    // '11.50'
+ * normalizarEntradaMoeda('11.50')    // '11.50'
+ * normalizarEntradaMoeda('1.150,00') // '1150.00'
+ * normalizarEntradaMoeda('1,150.00') // '1150.00'
+ * normalizarEntradaMoeda('11,')      // '11.'
+ * normalizarEntradaMoeda('11,509')   // '11.50'
+ */
+export function normalizarEntradaMoeda(value: string): string {
+  if (!value) return ''
+
+  // Mantém apenas dígitos e separadores
+  let limpo = value.replace(/[^\d.,]/g, '')
+  if (!limpo) return ''
+
+  // Descobre a posição do último separador (o decimal, na intenção do usuário)
+  const ultimoSeparador = Math.max(limpo.lastIndexOf(','), limpo.lastIndexOf('.'))
+
+  if (ultimoSeparador === -1) {
+    return limpo
+  }
+
+  // Parte inteira: remove todos os separadores restantes (milhar)
+  const inteiro = limpo.slice(0, ultimoSeparador).replace(/[.,]/g, '')
+  // Parte decimal: só dígitos, no máximo 2 casas
+  const decimal = limpo.slice(ultimoSeparador + 1).replace(/[.,]/g, '').slice(0, 2)
+
+  return `${inteiro || '0'}.${decimal}`
+}
+
+/**
+ * Aplica máscara monetária progressiva, preenchendo da direita para a esquerda
+ * (centavos primeiro), no padrão brasileiro.
+ *
+ * Só os dígitos são considerados: vírgulas e pontos digitados são ignorados,
+ * porque a posição do decimal é determinada pela máscara. Isso elimina o erro
+ * de digitar 11,50 e salvar 1150.
+ *
+ * Máximo de 12 dígitos para evitar overflow.
+ *
+ * @param value - Texto digitado pelo usuário
+ * @returns Texto formatado para exibição no input
+ * @example
+ * aplicarMascaraMoeda('1')      // '0,01'
+ * aplicarMascaraMoeda('12')     // '0,12'
+ * aplicarMascaraMoeda('125')    // '1,25'
+ * aplicarMascaraMoeda('1250')   // '12,50'
+ * aplicarMascaraMoeda('12500')  // '125,00'
+ * aplicarMascaraMoeda('125000') // '1.250,00'
+ * aplicarMascaraMoeda('')       // ''
+ */
+export function aplicarMascaraMoeda(value: string): string {
+  if (!value) return ''
+
+  // Considera apenas dígitos; separadores digitados são irrelevantes
+  const digitos = value.replace(/\D/g, '').slice(0, 12)
+  if (!digitos) return ''
+
+  const centavos = parseInt(digitos, 10)
+  if (isNaN(centavos)) return ''
+
+  return (centavos / 100).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
+}
+
+/**
+ * Formata um número no padrão brasileiro para exibição dentro de um input
+ * de valor (sem o símbolo R$), com 2 casas decimais.
+ *
+ * @param valor - Número a formatar
+ * @returns Texto no formato '1.150,00'
+ * @example
+ * formatarValorParaEdicao(11.5)  // '11,50'
+ * formatarValorParaEdicao(1150)  // '1.150,00'
+ */
+export function formatarValorParaEdicao(valor: number): string {
+  if (isNaN(valor)) return ''
+  return valor.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
+}
+
+/**
+ * Converte um texto de valor monetário em número, aceitando vírgula ou ponto.
+ *
+ * @param value - Texto digitado (ex.: '11,50', '1.150,00') ou número
+ * @returns Número correspondente, ou 0 quando inválido
+ * @example
+ * parsearMoeda('11,50')    // 11.5
+ * parsearMoeda('1.150,00') // 1150
+ * parsearMoeda('')         // 0
+ * parsearMoeda('abc')      // 0
+ */
+export function parsearMoeda(value: string | number | null | undefined): number {
+  if (value === null || value === undefined || value === '') return 0
+  if (typeof value === 'number') return isNaN(value) ? 0 : value
+
+  const numero = parseFloat(normalizarEntradaMoeda(value))
+  return isNaN(numero) ? 0 : numero
+}

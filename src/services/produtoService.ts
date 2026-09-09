@@ -84,6 +84,30 @@ export interface ProdutoService {
 }
 
 /**
+ * Garante que o custo do produto não seja maior que o preço de venda.
+ *
+ * Defesa em profundidade: a UI (ProdutoForm) já bloqueia esse cenário, mas a
+ * regra é revalidada aqui para proteger qualquer outro fluxo que chame o
+ * service diretamente. Um custo acima do preço distorce o cálculo de lucro
+ * nas métricas (ex.: custo cadastrado como 1150 em vez de 11,50).
+ *
+ * @throws Error quando custo > preco
+ */
+function validarCustoNaoMaiorQuePreco(custo: unknown, preco: unknown): void {
+  const custoNum = typeof custo === 'number' ? custo : parseFloat(String(custo ?? ''))
+  const precoNum = typeof preco === 'number' ? preco : parseFloat(String(preco ?? ''))
+
+  if (isNaN(custoNum) || isNaN(precoNum)) return
+  if (custoNum <= 0 || precoNum <= 0) return
+
+  if (custoNum > precoNum) {
+    throw new Error(
+      `Custo (R$ ${custoNum.toFixed(2)}) não pode ser maior que o preço de venda (R$ ${precoNum.toFixed(2)}). Verifique se o valor foi digitado com a vírgula correta.`
+    )
+  }
+}
+
+/**
  * Implementação do serviço de produtos
  */
 export const produtoService: ProdutoService = {
@@ -155,6 +179,8 @@ export const produtoService: ProdutoService = {
    */
   async criar(data: Omit<ProdutoSupabase, 'id' | 'criado_em' | 'atualizado_em'>): Promise<ProdutoSupabase> {
     try {
+      validarCustoNaoMaiorQuePreco((data as any).custo, (data as any).preco)
+
       // 1. Criar produto (injeta estabelecimento_id do tenant atual)
       const { data: produto, error } = await supabase
         .from('produtos')
@@ -253,6 +279,13 @@ export const produtoService: ProdutoService = {
       if (!produtoAtual) {
         throw new Error('Produto não encontrado')
       }
+
+      // Valida custo x preço considerando os valores EFETIVOS após o update:
+      // se um dos campos não vier no payload parcial, usa o já salvo.
+      validarCustoNaoMaiorQuePreco(
+        (data as any).custo !== undefined ? (data as any).custo : (produtoAtual as any).custo,
+        data.preco !== undefined ? data.preco : produtoAtual.preco
+      )
 
       // 2. Atualizar produto
       // IMPORTANTE: Não usar comTenant no UPDATE, pois comTenant injeta estabelecimento_id

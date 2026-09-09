@@ -5,6 +5,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import ImageUpload from "@/components/ImageUpload"
 import { categoriaService, type CategoriaSupabase, type ProdutoSupabase } from "@/services"
+import {
+  aplicarMascaraMoeda,
+  formatarValorParaEdicao,
+  parsearMoeda,
+  formatarMoeda
+} from "@/utils/formatacao"
 
 type Categoria = CategoriaSupabase
 
@@ -33,6 +39,32 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
   const [requiresStock, setRequiresStock] = useState(true)
   const [barcode, setBarcode] = useState("")
 
+  // Valores numéricos derivados (aceitam vírgula ou ponto)
+  const custoNumerico = parsearMoeda(custo)
+  const precoNumerico = parsearMoeda(preco)
+  const precoPromocionalNumerico = parsearMoeda(precoPromocional)
+
+  // Validação: custo não pode ser maior que o preço de venda.
+  // Só acusa erro quando ambos os campos têm valor, para não reclamar
+  // enquanto o usuário ainda está preenchendo o formulário.
+  const custoMaiorQuePreco =
+    custoNumerico > 0 && precoNumerico > 0 && custoNumerico > precoNumerico
+
+  // Validação: preço promocional não pode ficar abaixo do custo
+  const promocionalAbaixoDoCusto =
+    precoPromocionalNumerico > 0 && custoNumerico > 0 && precoPromocionalNumerico < custoNumerico
+
+  const erroCusto = custoMaiorQuePreco
+    ? `O custo (${formatarMoeda(custoNumerico)}) é maior que o preço de venda (${formatarMoeda(precoNumerico)}). Confira se digitou o valor com a vírgula no lugar certo.`
+    : ""
+
+  const erroPrecoPromocional = promocionalAbaixoDoCusto
+    ? `O preço promocional (${formatarMoeda(precoPromocionalNumerico)}) está abaixo do custo (${formatarMoeda(custoNumerico)}), o que gera prejuízo na venda.`
+    : ""
+
+  const formularioInvalido =
+    !nome.trim() || !descricao.trim() || !preco || !urlImagem || custoMaiorQuePreco
+
   // Carregar categorias do Supabase
   useEffect(() => {
     carregarDados()
@@ -59,9 +91,14 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
     if (produtoParaEditar) {
       setNome(produtoParaEditar.nome)
       setDescricao(produtoParaEditar.descricao)
-      setCusto((produtoParaEditar as any).custo?.toString() || "0")
-      setPreco(produtoParaEditar.preco.toString())
-      setPrecoPromocional(produtoParaEditar.precoPromocional?.toString() || "")
+      // Exibe no padrão brasileiro (11,50) em vez de 11.5
+      setCusto(formatarValorParaEdicao(parsearMoeda((produtoParaEditar as any).custo ?? 0)))
+      setPreco(formatarValorParaEdicao(parsearMoeda(produtoParaEditar.preco)))
+      setPrecoPromocional(
+        produtoParaEditar.precoPromocional
+          ? formatarValorParaEdicao(parsearMoeda(produtoParaEditar.precoPromocional))
+          : ""
+      )
       setCategoria(produtoParaEditar.categoria)
       setUrlImagem(produtoParaEditar.urlImagem)
       setRequiresStock((produtoParaEditar as any).requires_stock ?? true)
@@ -84,6 +121,9 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
 
     if (!nome.trim() || !descricao.trim() || !preco || !urlImagem) return
 
+    // 🔒 Trava: bloqueia o salvamento quando o custo é maior que o preço de venda
+    if (custoMaiorQuePreco) return
+
     const categoriaSelecionada = categorias.find(cat => {
       const catNome = cat.nome.toLowerCase()
       const categoriaLower = categoria.toLowerCase()
@@ -101,10 +141,10 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
     const produtoData = {
       nome: nome.trim(),
       descricao: descricao.trim(),
-      custo: custo && parseFloat(custo) >= 0 ? parseFloat(custo) : 0,
-      preco: parseFloat(preco),
-      preco_promocional: precoPromocional && parseFloat(precoPromocional) > 0 ? parseFloat(precoPromocional) : null,
-      precoPromocional: precoPromocional && parseFloat(precoPromocional) > 0 ? parseFloat(precoPromocional) : null,
+      custo: custoNumerico >= 0 ? custoNumerico : 0,
+      preco: precoNumerico,
+      preco_promocional: precoPromocionalNumerico > 0 ? precoPromocionalNumerico : null,
+      precoPromocional: precoPromocionalNumerico > 0 ? precoPromocionalNumerico : null,
       categoria_id: categoriaSelecionada?.id || null,
       categoria_nome: categoria,
       categoria,
@@ -143,16 +183,25 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
         <Label htmlFor="custo">Custo (R$)</Label>
         <Input
           id="custo"
-          type="number"
+          type="text"
+          inputMode="decimal"
           placeholder="0,00"
-          step="0.01"
-          min="0"
           value={custo}
-          onChange={(e) => setCusto(e.target.value)}
+          onChange={(e) => setCusto(aplicarMascaraMoeda(e.target.value))}
+          aria-invalid={!!erroCusto}
+          aria-describedby={erroCusto ? "custo-erro" : undefined}
+          className={erroCusto ? "border-red-500 focus-visible:ring-red-500" : ""}
         />
-        <p className="text-xs text-muted-foreground">
-          Custo unitário do produto (usado para calcular o lucro nas métricas)
-        </p>
+        {erroCusto ? (
+          <p id="custo-erro" role="alert" className="text-sm text-red-600 font-medium">
+            ⚠️ {erroCusto}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Custo unitário do produto (usado para calcular o lucro nas métricas).
+            Digite apenas números, começando pelos centavos: 125 vira 1,25
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -160,13 +209,14 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
           <Label htmlFor="preco">Preço (R$)</Label>
           <Input
             id="preco"
-            type="number"
+            type="text"
+            inputMode="decimal"
             placeholder="0,00"
-            step="0.01"
-            min="0"
             value={preco}
-            onChange={(e) => setPreco(e.target.value)}
+            onChange={(e) => setPreco(aplicarMascaraMoeda(e.target.value))}
             required
+            aria-invalid={!!erroCusto}
+            className={erroCusto ? "border-red-500 focus-visible:ring-red-500" : ""}
           />
         </div>
 
@@ -174,13 +224,20 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
           <Label htmlFor="precoPromocional">Preço Promocional (R$)</Label>
           <Input
             id="precoPromocional"
-            type="number"
+            type="text"
+            inputMode="decimal"
             placeholder="0,00 (opcional)"
-            step="0.01"
-            min="0"
             value={precoPromocional}
-            onChange={(e) => setPrecoPromocional(e.target.value)}
+            onChange={(e) => setPrecoPromocional(aplicarMascaraMoeda(e.target.value))}
+            aria-invalid={!!erroPrecoPromocional}
+            aria-describedby={erroPrecoPromocional ? "promocional-erro" : undefined}
+            className={erroPrecoPromocional ? "border-amber-500 focus-visible:ring-amber-500" : ""}
           />
+          {erroPrecoPromocional && (
+            <p id="promocional-erro" role="alert" className="text-sm text-amber-600 font-medium">
+              ⚠️ {erroPrecoPromocional}
+            </p>
+          )}
         </div>
       </div>
 
@@ -235,7 +292,7 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
             ⚠️ Cadastre categorias antes de criar produtos
           </p>
         )}
-        {!!(precoPromocional && parseFloat(precoPromocional) > 0) && (
+        {precoPromocionalNumerico > 0 && (
           <p className="text-sm text-green-600 font-medium">
             ✨ Este produto também aparecerá na seção de promoções
           </p>
@@ -295,7 +352,7 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
         </Button>
         <ActionButton 
           type="submit" 
-          disabled={!nome.trim() || !descricao.trim() || !preco || !urlImagem}
+          disabled={formularioInvalido}
           loading={saving}
         >
           {produtoParaEditar ? "Atualizar" : "Salvar"}
