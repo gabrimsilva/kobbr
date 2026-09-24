@@ -78,6 +78,7 @@ export default function EditarProduto() {
         custo: produtoAtualizado.custo || 0,
         preco: produtoAtualizado.preco,
         preco_promocional: produtoAtualizado.precoPromocional || null,
+        preco_atacado: produtoAtualizado.preco_atacado ?? null,
         categoria_id: produtoAtualizado.categoria_id,
         categoria_nome: produtoAtualizado.categoria,
         imagem_path: produtoAtualizado.urlImagem,

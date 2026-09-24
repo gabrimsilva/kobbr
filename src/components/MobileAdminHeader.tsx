@@ -27,7 +27,9 @@ import {
   CreditCard,
   Palette,
   UserCog,
-  TrendingUp
+  TrendingUp,
+  ClipboardList,
+  Plug
 } from "lucide-react"
 import { configuracaoService } from "@/services"
 import { usePermissoes } from "@/hooks/usePermissoes"
@@ -57,6 +59,7 @@ const menuItems: MenuItem[] = [
       { name: "Histórico de Vendas", id: "historico-vendas", icon: History }
     ]
   },
+  { name: "Pedidos", id: "pedidos", icon: ClipboardList },
   { 
     name: "Estoque", 
     id: "estoque-produtos", 
@@ -81,6 +84,7 @@ const menuItems: MenuItem[] = [
       { name: "Informações Gerais", id: "configuracoes-gerais", icon: Info },
       { name: "Horários", id: "configuracoes-horario", icon: Clock },
       { name: "Pagamentos", id: "configuracoes-pagamento", icon: CreditCard },
+      { name: "Integração de Pagamentos", id: "configuracoes-integracoes", icon: Plug },
       { name: "Aparência", id: "configuracoes-visuais", icon: Palette }
     ]
   },
@@ -115,6 +119,7 @@ export default function MobileAdminHeader({ onLogout, onToggleView, currentPage 
         return permissoes.podeAcessarProdutos
       case 'configuracoes':
         return permissoes.podeAcessarConfiguracoes
+      case 'pedidos':
       case 'usuarios':
       case 'metricas':
         return podeAcessarPagina(item.id)

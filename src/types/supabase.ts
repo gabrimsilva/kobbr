@@ -84,6 +84,7 @@ export interface ProdutoSupabase {
   custo?: number
   preco: number
   preco_promocional?: number
+  preco_atacado?: number | null
   categoria_id?: string
   categoria_nome?: string
   imagem_path?: string

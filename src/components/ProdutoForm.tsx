@@ -34,6 +34,7 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
   const [custo, setCusto] = useState("")
   const [preco, setPreco] = useState("")
   const [precoPromocional, setPrecoPromocional] = useState("")
+  const [precoAtacado, setPrecoAtacado] = useState("")
   const [categoria, setCategoria] = useState<string>("")
   const [urlImagem, setUrlImagem] = useState("")
   const [requiresStock, setRequiresStock] = useState(true)
@@ -43,6 +44,7 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
   const custoNumerico = parsearMoeda(custo)
   const precoNumerico = parsearMoeda(preco)
   const precoPromocionalNumerico = parsearMoeda(precoPromocional)
+  const precoAtacadoNumerico = parsearMoeda(precoAtacado)
 
   // Validação: custo não pode ser maior que o preço de venda.
   // Só acusa erro quando ambos os campos têm valor, para não reclamar
@@ -54,12 +56,20 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
   const promocionalAbaixoDoCusto =
     precoPromocionalNumerico > 0 && custoNumerico > 0 && precoPromocionalNumerico < custoNumerico
 
+  // Validação: preço de atacado não pode ficar abaixo do custo
+  const atacadoAbaixoDoCusto =
+    precoAtacadoNumerico > 0 && custoNumerico > 0 && precoAtacadoNumerico < custoNumerico
+
   const erroCusto = custoMaiorQuePreco
     ? `O custo (${formatarMoeda(custoNumerico)}) é maior que o preço de venda (${formatarMoeda(precoNumerico)}). Confira se digitou o valor com a vírgula no lugar certo.`
     : ""
 
   const erroPrecoPromocional = promocionalAbaixoDoCusto
     ? `O preço promocional (${formatarMoeda(precoPromocionalNumerico)}) está abaixo do custo (${formatarMoeda(custoNumerico)}), o que gera prejuízo na venda.`
+    : ""
+
+  const erroPrecoAtacado = atacadoAbaixoDoCusto
+    ? `O preço de atacado (${formatarMoeda(precoAtacadoNumerico)}) está abaixo do custo (${formatarMoeda(custoNumerico)}), o que gera prejuízo na venda.`
     : ""
 
   const formularioInvalido =
@@ -99,6 +109,11 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
           ? formatarValorParaEdicao(parsearMoeda(produtoParaEditar.precoPromocional))
           : ""
       )
+      setPrecoAtacado(
+        (produtoParaEditar as any).preco_atacado
+          ? formatarValorParaEdicao(parsearMoeda((produtoParaEditar as any).preco_atacado))
+          : ""
+      )
       setCategoria(produtoParaEditar.categoria)
       setUrlImagem(produtoParaEditar.urlImagem)
       setRequiresStock((produtoParaEditar as any).requires_stock ?? true)
@@ -109,6 +124,7 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
       setCusto("0")
       setPreco("")
       setPrecoPromocional("")
+      setPrecoAtacado("")
       setCategoria('pizza')
       setUrlImagem("")
       setRequiresStock(true)
@@ -145,6 +161,7 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
       preco: precoNumerico,
       preco_promocional: precoPromocionalNumerico > 0 ? precoPromocionalNumerico : null,
       precoPromocional: precoPromocionalNumerico > 0 ? precoPromocionalNumerico : null,
+      preco_atacado: precoAtacadoNumerico > 0 ? precoAtacadoNumerico : null,
       categoria_id: categoriaSelecionada?.id || null,
       categoria_nome: categoria,
       categoria,
@@ -239,6 +256,30 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
             </p>
           )}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="precoAtacado">Preço de Atacado (R$)</Label>
+        <Input
+          id="precoAtacado"
+          type="text"
+          inputMode="decimal"
+          placeholder="0,00 (opcional)"
+          value={precoAtacado}
+          onChange={(e) => setPrecoAtacado(aplicarMascaraMoeda(e.target.value))}
+          aria-invalid={!!erroPrecoAtacado}
+          aria-describedby={erroPrecoAtacado ? "atacado-erro" : "atacado-ajuda"}
+          className={erroPrecoAtacado ? "border-amber-500 focus-visible:ring-amber-500" : ""}
+        />
+        {erroPrecoAtacado ? (
+          <p id="atacado-erro" role="alert" className="text-sm text-amber-600 font-medium">
+            ⚠️ {erroPrecoAtacado}
+          </p>
+        ) : (
+          <p id="atacado-ajuda" className="text-xs text-muted-foreground">
+            Preço cobrado quando o cliente compra no modo Atacado pelo catálogo. Em branco, vale o preço normal.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

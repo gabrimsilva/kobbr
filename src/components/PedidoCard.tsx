@@ -19,7 +19,8 @@ import {
   Truck,
   Store,
   User,
-  Package
+  Package,
+  AlertTriangle
 } from "lucide-react"
 import { type PedidoSupabase } from "@/services"
 import PrintOrder from "./PrintOrder"
@@ -60,6 +61,9 @@ export default function PedidoCard({ pedido, onStatusChange: _, onCancelar, isDr
       'cartaoCredito': 'Cartão de Crédito',
       'cartaoDebito': 'Cartão de Débito',
       'pix': 'PIX',
+      'credito': 'Cartão de Crédito',
+      'debito': 'Cartão de Débito',
+      'saldo_mercado_pago': 'Saldo Mercado Pago',
       'pixEntrega': 'PIX na Entrega',
       'pix_entrega': 'PIX na Entrega',
       'cartaoVR': 'Cartão VR',
@@ -71,6 +75,20 @@ export default function PedidoCard({ pedido, onStatusChange: _, onCancelar, isDr
     }
     return formas[forma] || forma
   }
+
+  // Pagamento online (pedidos do catálogo via Mercado Pago)
+  const statusMp = (pedido as any).mercado_pago_status as string | null | undefined
+  const pagamentoBadge =
+    statusMp === 'approved'
+      ? { texto: 'Pago', classe: 'bg-green-500 hover:bg-green-500' }
+      : ['rejected', 'cancelled', 'valor_divergente'].includes(statusMp ?? '')
+        ? { texto: 'Pgto recusado', classe: 'bg-red-600 hover:bg-red-600' }
+        : ['refunded', 'charged_back'].includes(statusMp ?? '')
+          ? { texto: 'Estornado', classe: 'bg-gray-500 hover:bg-gray-500' }
+          : { texto: 'Aguardando pgto', classe: 'bg-amber-500 hover:bg-amber-500' }
+  const tipoVenda = (pedido as any).tipo_venda as 'varejo' | 'atacado' | undefined
+  const doCatalogo = (pedido as any).origem === 'catalogo'
+  const estoqueAlerta = (pedido as any).estoque_alerta as string | null | undefined
 
   // Extrair ID curto do pedido (últimos 4 dígitos)
   const idCurto = pedido.codigo_pedido || pedido.pedido_id.split('-').pop()?.slice(-4) || pedido.pedido_id.slice(-4)
@@ -116,6 +134,23 @@ export default function PedidoCard({ pedido, onStatusChange: _, onCancelar, isDr
                   <Split className="w-3 h-3" />
                 </Badge>
               )}
+              {doCatalogo && tipoVenda && (
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full whitespace-nowrap font-semibold ${tipoVenda === 'atacado'
+                    ? 'bg-amber-50 text-amber-800 border-amber-300'
+                    : 'bg-sky-50 text-sky-800 border-sky-300'
+                    }`}
+                  title={tipoVenda === 'atacado' ? 'Venda no atacado' : 'Venda no varejo'}
+                >
+                  {tipoVenda === 'atacado' ? 'Atacado' : 'Varejo'}
+                </Badge>
+              )}
+              {doCatalogo && (
+                <Badge className={`${pagamentoBadge.classe} text-white text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap`}>
+                  {pagamentoBadge.texto}
+                </Badge>
+              )}
             </div>
 
             <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
@@ -154,6 +189,13 @@ export default function PedidoCard({ pedido, onStatusChange: _, onCancelar, isDr
             </h3>
           </div>
 
+          {estoqueAlerta && (
+            <div className="mb-2 flex items-start gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-md p-2" role="alert">
+              <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+              <span>Estoque insuficiente: {estoqueAlerta}</span>
+            </div>
+          )}
+
           {/* Botões sempre visíveis */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="flex-1 min-w-0">
@@ -191,7 +233,7 @@ export default function PedidoCard({ pedido, onStatusChange: _, onCancelar, isDr
                   <span className="text-xs sm:text-sm truncate">{pedido.cliente_telefone}</span>
                 </div>
                 {/* Tag de status de pagamento */}
-                {(pedido as any).mercado_pago_status === 'approved' ? (
+                {doCatalogo ? null : (pedido as any).mercado_pago_status === 'approved' ? (
                   <Badge className="bg-green-500 hover:bg-green-500 text-white text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
                     Pago
                   </Badge>

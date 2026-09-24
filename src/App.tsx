@@ -59,6 +59,7 @@ const ProcessandoPedido = lazy(() => import("@/pages/ProcessandoPedido"))
 const MeusPedidos = lazy(() => import("@/pages/MeusPedidos"))
 const AvaliarEstabelecimento = lazy(() => import("@/pages/AvaliarEstabelecimento"))
 const PagamentoPix = lazy(() => import("@/pages/PagamentoPix"))
+const PedidoCatalogoStatus = lazy(() => import("@/pages/PedidoCatalogoStatus"))
 const Analytics = lazy(() => import("@/pages/Analytics"))
 const Metricas = lazy(() => import("@/pages/Metricas"))
 const LoginPremium = lazy(() => import("@/pages/LoginPremium"))
@@ -311,6 +312,7 @@ function AdminSystem() {
           <Route path="/configuracoes-horario" element={<Configuracoes initialPage="horario" />} />
           <Route path="/configuracoes-pagamento" element={<Configuracoes initialPage="pagamento" />} />
           <Route path="/configuracoes-visuais" element={<Configuracoes initialPage="visuais" />} />
+          <Route path="/configuracoes-integracoes" element={<Configuracoes initialPage="integracoes" />} />
 
           {/* Multi-estabelecimento */}
           <Route path="/estabelecimentos" element={<Estabelecimentos />} />
@@ -534,6 +536,13 @@ function App() {
             <Route path="/pagamento-pix" element={
               <Suspense fallback={<LoadingSpinner />}>
                 <PagamentoPix />
+              </Suspense>
+            } />
+
+            {/* Retorno do Mercado Pago (pedidos do catálogo) */}
+            <Route path="/pedido/:pedidoId" element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <PedidoCatalogoStatus />
               </Suspense>
             } />
 

@@ -84,6 +84,8 @@ class VendaService {
       'cartaoCredito': 'CREDIT',
       'cartao_debito': 'DEBIT',           // Adicionar suporte a underscore
       'cartao_credito': 'CREDIT',         // Adicionar suporte a underscore
+      'debito': 'DEBIT',                  // Pedidos do catálogo (Mercado Pago)
+      'credito': 'CREDIT',
       'pix': 'PIX',
       'CASH': 'CASH',
       'DEBIT': 'DEBIT',

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import toast from "react-hot-toast"
 import Footer from "@/components/Footer"
 import CookieConsent from "@/components/CookieConsent"
 import FiltroCategorias from "@/components/delivery/FiltroCategorias"
@@ -9,9 +10,19 @@ import ModalInformacoesEstabelecimento from "@/components/ModalInformacoesEstabe
 import LojaStatusBadge from "@/components/LojaStatusBadge"
 import { ProdutoCardSkeletonGrid } from "@/components/skeletons/ProdutoCardSkeleton"
 import { configuracaoService, supabase, type CategoriaSupabase } from "@/services"
-import { Info } from "lucide-react"
+import { lojaOnlineService, CONFIG_PUBLICA_PADRAO, type ConfigCatalogoPublica } from "@/services/lojaOnlineService"
+import { useCarrinhoCatalogo, chaveItem, type ItemCarrinhoCatalogo } from "@/hooks/useCarrinhoCatalogo"
+import SeletorModoVenda from "@/components/catalogo/SeletorModoVenda"
+import CarrinhoCatalogoSheet from "@/components/catalogo/CarrinhoCatalogoSheet"
+import { formatarReais, precoUnitario } from "@/components/catalogo/precos"
+import { Info, ShoppingCart } from "lucide-react"
 
 export default function CatalogoPage() {
+  const [lojaConfig, setLojaConfig] = useState<ConfigCatalogoPublica>(CONFIG_PUBLICA_PADRAO)
+  const [carrinhoAberto, setCarrinhoAberto] = useState(false)
+  const carrinho = useCarrinhoCatalogo()
+  const pedidosAtivos = lojaConfig.pedidos_ativos
+  const modo = pedidosAtivos && lojaConfig.atacado_ativo ? carrinho.modo : 'varejo'
   const [produtos, setProdutos] = useState<ProdutoCatalogo[]>([])
   const [categorias, setCategorias] = useState<CategoriaSupabase[]>([])
   const [categoriaAtiva, setCategoriaAtiva] = useState('todos')
@@ -69,22 +80,46 @@ export default function CatalogoPage() {
 
       console.log('✅ Categorias retornadas do Supabase:', categoriasData?.length || 0)
 
-      // Buscar estoque de todos os produtos
+      // Buscar estoque de todos os produtos (o mais antigo por produto, mesma regra da baixa)
       const { data: estoqueData, error: estoqueError } = await supabase
         .from('stock_items')
-        .select('product_id, quantidade')
+        .select('id, product_id, quantidade')
+        .order('criado_em', { ascending: true })
 
       if (estoqueError) {
         console.warn('⚠️ Erro ao buscar estoque:', estoqueError)
       }
 
       // Criar mapa de estoque por product_id
-      const estoqueMap = new Map<string, number>()
+      const estoqueMap = new Map<string, { id: string; quantidade: number }>()
       estoqueData?.forEach(e => {
+        if (estoqueMap.has(e.product_id)) return
         // quantidade é string no banco, converter para número
-        const qtd = parseFloat(e.quantidade) || 0
-        estoqueMap.set(e.product_id, qtd)
+        estoqueMap.set(e.product_id, { id: e.id, quantidade: parseFloat(e.quantidade) || 0 })
       })
+
+      // Variantes (cor, tamanho...) e configuração da loja online
+      const stockIds = [...estoqueMap.values()].map(e => e.id)
+      const [variantesResult, configLoja] = await Promise.all([
+        stockIds.length > 0
+          ? supabase
+              .from('stock_variants')
+              .select('id, stock_item_id, nome, label, quantidade')
+              .in('stock_item_id', stockIds)
+              .order('nome', { ascending: true })
+          : Promise.resolve({ data: [], error: null }),
+        lojaOnlineService.buscarConfigPublica()
+      ])
+      if (variantesResult.error) {
+        console.warn('⚠️ Erro ao buscar variantes:', variantesResult.error)
+      }
+      const variantesMap = new Map<string, Array<{ id: string; nome: string; quantidade: number }>>()
+      ;(variantesResult.data || []).forEach((v: any) => {
+        const lista = variantesMap.get(v.stock_item_id) || []
+        lista.push({ id: v.id, nome: v.nome || v.label || 'Opção', quantidade: parseFloat(v.quantidade) || 0 })
+        variantesMap.set(v.stock_item_id, lista)
+      })
+      setLojaConfig(configLoja)
 
       const configsMap = await configuracaoService.buscarMultiplas([
         'nome_estabelecimento',
@@ -99,17 +134,23 @@ export default function CatalogoPage() {
       const produtosCatalogo: ProdutoCatalogo[] = (produtosData || [])
         .filter(p => p.ativo)
         .map(p => {
-          const saldoEstoque = estoqueMap.get(p.id) ?? 0
+          const estoque = estoqueMap.get(p.id)
+          const saldoEstoque = estoque?.quantidade ?? 0
+          // Mesma regra do servidor: sem stock_item ou requires_stock = false não controla
+          const controlaEstoque = p.requires_stock !== false && !!estoque
           return {
             id: p.id,
             nome: p.nome,
             descricao: p.descricao || '',
-            preco: p.preco,
-            precoPromocional: p.preco_promocional,
+            preco: Number(p.preco),
+            precoPromocional: p.preco_promocional != null ? Number(p.preco_promocional) : undefined,
+            precoAtacado: p.preco_atacado != null ? Number(p.preco_atacado) : null,
             categoria: p.categoria_nome || 'Outros',
             urlImagem: p.imagem_path || '/placeholder-food.svg',
-            estoqueDisponivel: saldoEstoque > 0,
-            quantidadeEstoque: saldoEstoque
+            estoqueDisponivel: controlaEstoque ? saldoEstoque > 0 : true,
+            quantidadeEstoque: controlaEstoque ? saldoEstoque : undefined,
+            controlaEstoque,
+            variantes: estoque ? variantesMap.get(estoque.id) : undefined
           }
         })
 
@@ -120,6 +161,7 @@ export default function CatalogoPage() {
       
       setProdutos(produtosCatalogo)
       setCategorias(categoriasData || [])
+      carrinho.manterApenas(new Set(produtosCatalogo.map(p => p.id)))
 
       // Configurações
       const nomeEstab = configsMap.get('nome_estabelecimento')?.valor || 'KOBE E-Commerce'
@@ -164,6 +206,33 @@ export default function CatalogoPage() {
     setModalDetalhesAberto(false)
     setProdutoSelecionado(null)
   }
+
+  // ---- Pedidos online (carrinho) ----
+  const produtosPorId = useMemo(() => new Map(produtos.map(p => [p.id, p])), [produtos])
+
+  const totalCarrinho = useMemo(
+    () =>
+      carrinho.itens.reduce((soma, item) => {
+        const produto = produtosPorId.get(item.produtoId)
+        return produto ? soma + precoUnitario(produto, modo) * item.quantidade : soma
+      }, 0),
+    [carrinho.itens, produtosPorId, modo]
+  )
+
+  const handleAdicionarAoCarrinho = useCallback((item: ItemCarrinhoCatalogo) => {
+    carrinho.adicionar(item)
+    const produto = produtosPorId.get(item.produtoId)
+    toast.success(`${item.quantidade}x ${produto?.nome ?? 'produto'} adicionado ao carrinho`)
+  }, [carrinho.adicionar, produtosPorId])
+
+  const quantidadeNoCarrinho = useCallback(
+    (varianteId: string | null) => {
+      if (!produtoSelecionado) return 0
+      const chave = chaveItem({ produtoId: produtoSelecionado.id, varianteId })
+      return carrinho.itens.find(i => chaveItem(i) === chave)?.quantidade ?? 0
+    },
+    [carrinho.itens, produtoSelecionado]
+  )
 
   // Filtrar produtos por categoria
   const produtosFiltrados = categoriaAtiva === 'todos'
@@ -231,6 +300,15 @@ export default function CatalogoPage() {
           </div>
         )}
 
+        {/* Varejo / Atacado */}
+        {pedidosAtivos && lojaConfig.atacado_ativo && (
+          <SeletorModoVenda
+            modo={modo}
+            onMudar={carrinho.setModo}
+            pedidoMinimoAtacado={lojaConfig.atacado_pedido_minimo}
+          />
+        )}
+
         {/* Filtro de Categorias */}
         <FiltroCategorias
           categorias={categorias}
@@ -258,6 +336,7 @@ export default function CatalogoPage() {
                       key={produto.id}
                       produto={produto}
                       onAbrirDetalhes={handleAbrirDetalhes}
+                      modoVenda={pedidosAtivos ? modo : undefined}
                     />
                   ))}
                 </div>
@@ -281,6 +360,7 @@ export default function CatalogoPage() {
                   key={produto.id}
                   produto={produto}
                   onAbrirDetalhes={handleAbrirDetalhes}
+                  modoVenda={pedidosAtivos ? modo : undefined}
                 />
               ))}
             </div>
@@ -307,7 +387,46 @@ export default function CatalogoPage() {
         onClose={handleFecharModal}
         produto={produtoSelecionado}
         whatsapp={configuracao.telefone}
+        compra={pedidosAtivos ? {
+          modo,
+          quantidadeNoCarrinho,
+          onAdicionar: handleAdicionarAoCarrinho
+        } : undefined}
       />
+
+      {/* Carrinho (pedidos online) */}
+      {pedidosAtivos && (
+        <>
+          {carrinho.quantidadeTotal > 0 && (
+            <button
+              type="button"
+              onClick={() => setCarrinhoAberto(true)}
+              className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white pl-4 pr-5 py-3 rounded-full shadow-xl cursor-pointer max-w-[calc(100%-2rem)]"
+              aria-label={`Abrir carrinho com ${carrinho.quantidadeTotal} itens`}
+            >
+              <span className="relative">
+                <ShoppingCart className="h-5 w-5" />
+                <span className="absolute -top-2 -right-2.5 bg-white text-purple-700 text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                  {carrinho.quantidadeTotal}
+                </span>
+              </span>
+              <span className="font-semibold whitespace-nowrap">Ver carrinho</span>
+              <span className="font-bold tabular-nums whitespace-nowrap">{formatarReais(totalCarrinho)}</span>
+            </button>
+          )}
+          <CarrinhoCatalogoSheet
+            aberto={carrinhoAberto}
+            onMudarAberto={setCarrinhoAberto}
+            itens={carrinho.itens}
+            produtos={produtosPorId}
+            modo={modo}
+            config={lojaConfig}
+            onAlterarQuantidade={carrinho.alterarQuantidade}
+            onRemover={carrinho.remover}
+            onPedidoCriado={carrinho.limpar}
+          />
+        </>
+      )}
 
       {/* Modal de Informações */}
       <ModalInformacoesEstabelecimento

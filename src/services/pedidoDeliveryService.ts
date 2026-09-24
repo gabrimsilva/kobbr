@@ -44,10 +44,14 @@ class PedidoDeliveryService {
 
       console.log(`📋 Itens do pedido (após normalização):`, itens)
 
+      // Pedidos do catálogo pagos online já tiveram o estoque baixado na
+      // confirmação do pagamento (função baixar_estoque_pedido no banco)
+      const estoqueJaBaixado = pedido.estoque_baixado === true
+
       if (!Array.isArray(itens) || itens.length === 0) {
         console.warn(`⚠️ Pedido sem itens ou itens em formato inválido`)
         // Não falhar, apenas pular validação de estoque
-      } else {
+      } else if (!estoqueJaBaixado) {
         // 2. VALIDAR ESTOQUE (mesma regra do PDV e das comandas).
         // Roda ANTES de criar a venda: se faltar saldo em qualquer item, nada
         // é persistido e nada é baixado.
@@ -74,7 +78,7 @@ class PedidoDeliveryService {
       // stock_*. Falhas aqui são reportadas ao operador em vez de silenciadas.
       const falhasBaixa: string[] = []
 
-      if (Array.isArray(itens) && itens.length > 0) {
+      if (Array.isArray(itens) && itens.length > 0 && !estoqueJaBaixado) {
         for (const item of itens) {
           const produtoId = item.produto_id || item.produto?.id
           const quantidade = item.quantidade || 1

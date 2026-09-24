@@ -18,7 +18,9 @@ import {
   CreditCard,
   Palette,
   UserCog,
-  TrendingUp
+  TrendingUp,
+  ClipboardList,
+  Plug
 } from "lucide-react"
 import MobileAdminHeader from "../MobileAdminHeader"
 import { useConfig } from "@/contexts/ConfigContext"
@@ -52,6 +54,11 @@ const menuItems = [
         id: "historico-vendas"
       }
     ]
+  },
+  {
+    title: "Pedidos",
+    icon: ClipboardList,
+    id: "pedidos"
   },
   {
     title: "Estoque",
@@ -96,6 +103,11 @@ const menuItems = [
         title: "Pagamentos",
         icon: CreditCard,
         id: "configuracoes-pagamento"
+      },
+      {
+        title: "Integração de Pagamentos",
+        icon: Plug,
+        id: "configuracoes-integracoes"
       },
       {
         title: "Aparência",
@@ -161,6 +173,7 @@ export default function AppLayout({ children, onLogout, onToggleView, currentPag
       if (item.id === 'estoque-produtos') return permissoes.podeAcessarEstoque
       if (item.id === 'produtos') return permissoes.podeAcessarProdutos
       if (item.id === 'configuracoes') return permissoes.podeAcessarConfiguracoes
+      if (item.id === 'pedidos') return podeAcessarPagina('pedidos')
       if (item.id === 'usuarios') return podeAcessarPagina('usuarios')
       if (item.id === 'metricas') return podeAcessarPagina('metricas')
       

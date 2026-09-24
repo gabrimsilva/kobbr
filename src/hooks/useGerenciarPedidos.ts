@@ -164,16 +164,16 @@ export function useGerenciarPedidos(
         observacaoHistorico = `Status alterado para: ${statusHistorico}`
       }
 
-      await withRetry(
-        async () => {
-          await historicoPedidoService.adicionarStatus(
-            pedidoId,
-            statusHistorico,
-            observacaoHistorico
-          )
-        },
-        RETRY_PRESETS.NORMAL
-      )
+      // Linha do tempo do pedido é auxiliar: falha aqui não desfaz a mudança de status
+      try {
+        await historicoPedidoService.adicionarStatus(
+          pedidoId,
+          statusHistorico,
+          observacaoHistorico
+        )
+      } catch (historicoError) {
+        console.warn('⚠️ Não foi possível registrar o histórico do status:', historicoError)
+      }
 
       // Atualizar estado local
       // Se o status é "Finalizado", remover da lista (irá para histórico)

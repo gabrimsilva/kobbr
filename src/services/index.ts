@@ -94,6 +94,18 @@ export type { RegistrarConsumoResponso, ItemConsumo, ConsumosPorPeriodo } from '
 import { pedidoDeliveryService } from './pedidoDeliveryService'
 export { pedidoDeliveryService }
 
+// Loja online (pedidos do catálogo + Mercado Pago)
+import { lojaOnlineService } from './lojaOnlineService'
+export { lojaOnlineService }
+export type {
+  ConfigCatalogoPublica,
+  ConfigLojaOnline,
+  FormaPagamentoOnline,
+  NovoPedidoCatalogo,
+  StatusPedidoCatalogo,
+  TipoVenda
+} from './lojaOnlineService'
+
 // Services de cupom fiscal
 import { receiptService } from './receiptService'
 export { receiptService }
