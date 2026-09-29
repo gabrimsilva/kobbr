@@ -58,6 +58,11 @@ export const EstabelecimentoProvider = ({ children }: ProviderProps) => {
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const anteriorRef = useRef<Estabelecimento | null>(null)
+  // Guarda o id do usuário cuja sessão já foi carregada, para ignorar eventos
+  // SIGNED_IN "fantasmas" que o supabase-js dispara ao readquirir foco na aba
+  // (mesmo sem o usuário ter feito login de fato) — evita recarregar/remontar
+  // toda a árvore de rotas e perder o estado da página ao trocar de aba.
+  const usuarioIdCarregadoRef = useRef<string | null>(null)
 
   /** Atualiza o estado do atual e sincroniza o store dos services. */
   const aplicarAtual = useCallback((estab: Estabelecimento | null) => {
@@ -75,9 +80,11 @@ export const EstabelecimentoProvider = ({ children }: ProviderProps) => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
+        usuarioIdCarregadoRef.current = null
         setLoading(false)
         return
       }
+      usuarioIdCarregadoRef.current = user.id
 
       // Carrega o vínculo do usuário e a lista de estabelecimentos autorizados.
       const [vinculo, autorizados] = await Promise.all([
@@ -121,9 +128,23 @@ export const EstabelecimentoProvider = ({ children }: ProviderProps) => {
 
   useEffect(() => {
     carregar()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // SIGNED_OUT: sempre recarrega (limpa o contexto)
+      if (event === 'SIGNED_OUT') {
+        usuarioIdCarregadoRef.current = null
         carregar()
+        return
+      }
+
+      // SIGNED_IN: o supabase-js redispara esse evento ao readquirir foco na
+      // aba/janela (revalidação de sessão), mesmo sem login novo. Só recarrega
+      // se o usuário autenticado realmente mudou — do contrário o loading
+      // giraria de novo e desmontaria toda a árvore de rotas à toa.
+      if (event === 'SIGNED_IN') {
+        const newUserId = session?.user?.id
+        if (newUserId && newUserId !== usuarioIdCarregadoRef.current) {
+          carregar()
+        }
       }
     })
     return () => subscription.unsubscribe()
