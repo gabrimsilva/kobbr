@@ -1,6 +1,8 @@
-// Edge function: pedidos do catálogo público com Mercado Pago Checkout Pro.
+// Edge function: pedidos do catálogo público, com ou sem Mercado Pago Checkout Pro.
 //
-// POST { action: 'criar', ... }     → valida, calcula preços no servidor, grava o pedido e cria a preferência
+// POST { action: 'criar', ... }     → valida, calcula preços no servidor, grava o pedido e, se a loja
+//                                     cobra online (pagamento_online), cria a preferência
+//                                     (sem cobrança online o pedido vai direto para o Kanban)
 // POST { action: 'confirmar', ... } → consulta o pagamento no Mercado Pago e atualiza o pedido
 // POST ?webhook=1&e=<estab_id>     → notificação do Mercado Pago (mesmo processamento do 'confirmar')
 //
@@ -20,11 +22,14 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 type FormaPagamento = "pix" | "credito" | "debito"
+// Sem pagamento online o cliente só informa como vai pagar na retirada/entrega
+type FormaPagamentoPedido = FormaPagamento | "dinheiro"
 type TipoVenda = "varejo" | "atacado"
 
 interface ConfigLoja {
   estabelecimento_id: string
   pedidos_ativos: boolean
+  pagamento_online: boolean
   ambiente: "teste" | "producao"
   access_token: string | null
   pix_ativo: boolean
@@ -63,7 +68,7 @@ async function carregarConfig(db: SupabaseClient, estabelecimentoId: string): Pr
     .eq("estabelecimento_id", estabelecimentoId)
     .maybeSingle()
   if (error) throw error
-  if (!data || !data.pedidos_ativos || !data.access_token) {
+  if (!data || !data.pedidos_ativos || (data.pagamento_online && !data.access_token)) {
     throw new ErroCliente("Pedidos online não estão disponíveis no momento.", 409)
   }
   return { ...data, atacado_pedido_minimo: Number(data.atacado_pedido_minimo) || 0 } as ConfigLoja
@@ -97,15 +102,16 @@ interface ItemEntrada {
 
 function validarEntradaCriar(body: any) {
   const tipoVenda: TipoVenda = body?.tipo_venda === "atacado" ? "atacado" : "varejo"
-  const forma = body?.forma_pagamento as FormaPagamento
-  if (!["pix", "credito", "debito"].includes(forma)) throw new ErroCliente("Forma de pagamento inválida.")
+  const forma = body?.forma_pagamento as FormaPagamentoPedido
+  if (!["pix", "credito", "debito", "dinheiro"].includes(forma)) throw new ErroCliente("Forma de pagamento inválida.")
 
   const nome = String(body?.cliente?.nome ?? "").trim().replace(/\s+/g, " ")
   const telefone = String(body?.cliente?.telefone ?? "").replace(/\D/g, "")
   const email = String(body?.cliente?.email ?? "").trim().toLowerCase()
   if (nome.length < 3 || nome.length > 100) throw new ErroCliente("Informe seu nome completo.")
   if (telefone.length < 10 || telefone.length > 13) throw new ErroCliente("Telefone inválido.")
-  if (!EMAIL_RE.test(email) || email.length > 120) throw new ErroCliente("E-mail inválido.")
+  // Obrigatório só com pagamento online (checado em criarPedido): o Mercado Pago exige o e-mail do pagador
+  if (email && (!EMAIL_RE.test(email) || email.length > 120)) throw new ErroCliente("E-mail inválido.")
 
   const observacoes = String(body?.observacoes ?? "").trim().slice(0, 500) || null
 
@@ -135,10 +141,12 @@ function validarEntradaCriar(body: any) {
   return { tipoVenda, forma, nome, telefone, email, observacoes, itens: [...agrupados.values()] }
 }
 
-function precoVarejo(p: { preco: number; preco_promocional: number | null }) {
-  const preco = Number(p.preco) || 0
-  const promo = Number(p.preco_promocional) || 0
-  return promo > 0 && promo < preco ? promo : preco
+// O catálogo nunca usa o preço do PDV. Mesma regra de src/components/catalogo/precos.ts:
+// varejo = preco_online; atacado = preco_atacado quando cadastrado, senão preco_online.
+// 0 = produto sem preço online (não pode ser pedido).
+function precoCatalogo(p: { preco_online: number | null; preco_atacado: number | null }, tipoVenda: TipoVenda) {
+  if (tipoVenda === "atacado" && Number(p.preco_atacado) > 0) return Number(p.preco_atacado)
+  return Number(p.preco_online) || 0
 }
 
 function formatarTelefone(digitos: string) {
@@ -165,7 +173,7 @@ async function criarPedido(req: Request, body: any) {
   const produtoIds = [...new Set(entrada.itens.map((i) => i.produto_id))]
   const { data: produtos, error: errProdutos } = await db
     .from("produtos")
-    .select("id, nome, preco, preco_promocional, preco_atacado, categoria_nome, requires_stock, ativo, estabelecimento_id")
+    .select("id, nome, preco_atacado, preco_online, categoria_nome, requires_stock, ativo, estabelecimento_id")
     .in("id", produtoIds)
   if (errProdutos) throw errProdutos
   const mapaProdutos = new Map((produtos ?? []).map((p) => [p.id, p]))
@@ -181,8 +189,16 @@ async function criarPedido(req: Request, body: any) {
   const estabelecimentoId = produtos![0].estabelecimento_id as string
   const config = await carregarConfig(db, estabelecimentoId)
 
-  const formaAtiva = { pix: config.pix_ativo, credito: config.credito_ativo, debito: config.debito_ativo }
-  if (!formaAtiva[entrada.forma]) throw new ErroCliente("Forma de pagamento indisponível.")
+  if (config.pagamento_online) {
+    const formaAtiva: Record<FormaPagamentoPedido, boolean> = {
+      pix: config.pix_ativo,
+      credito: config.credito_ativo,
+      debito: config.debito_ativo,
+      dinheiro: false,
+    }
+    if (!formaAtiva[entrada.forma]) throw new ErroCliente("Forma de pagamento indisponível.")
+    if (!entrada.email) throw new ErroCliente("Informe seu e-mail.")
+  }
   if (entrada.tipoVenda === "atacado" && !config.atacado_ativo) {
     throw new ErroCliente("Vendas no atacado não estão disponíveis.")
   }
@@ -205,6 +221,19 @@ async function criarPedido(req: Request, body: any) {
     ? await db.from("stock_variants").select("id, stock_item_id, nome, label, quantidade").in("stock_item_id", stockIds)
     : { data: [], error: null }
   if (errVar) throw errVar
+  // Itens de pedidos em aberto (ainda não baixados) seguram o estoque
+  const { data: reservados, error: errReserva } = await db.rpc("catalogo_estoque_reservado", {
+    p_produto_ids: produtoIds,
+  })
+  if (errReserva) throw errReserva
+  const reservadoPorProduto = new Map<string, number>()
+  const reservadoPorVariante = new Map<string, number>()
+  for (const r of reservados ?? []) {
+    const qtd = Number(r.quantidade) || 0
+    reservadoPorProduto.set(r.produto_id, (reservadoPorProduto.get(r.produto_id) ?? 0) + qtd)
+    if (r.variante_id) reservadoPorVariante.set(r.variante_id, (reservadoPorVariante.get(r.variante_id) ?? 0) + qtd)
+  }
+
   const variantesPorStock = new Map<string, any[]>()
   for (const v of variantes ?? []) {
     const lista = variantesPorStock.get(v.stock_item_id) ?? []
@@ -229,7 +258,12 @@ async function criarPedido(req: Request, body: any) {
     }
 
     if (p.requires_stock !== false && stock) {
-      const disponivel = variante ? Number(variante.quantidade) || 0 : stock.quantidade
+      const disponivel = Math.max(
+        variante
+          ? (Number(variante.quantidade) || 0) - (reservadoPorVariante.get(variante.id) ?? 0)
+          : stock.quantidade - (reservadoPorProduto.get(p.id) ?? 0),
+        0,
+      )
       if (disponivel < item.quantidade) {
         const rotulo = variante ? `${p.nome} (${variante.nome ?? variante.label})` : p.nome
         throw new ErroCliente(
@@ -241,9 +275,8 @@ async function criarPedido(req: Request, body: any) {
       }
     }
 
-    const unitario = centavos(
-      entrada.tipoVenda === "atacado" && Number(p.preco_atacado) > 0 ? Number(p.preco_atacado) : precoVarejo(p),
-    )
+    const unitario = centavos(precoCatalogo(p, entrada.tipoVenda))
+    if (unitario <= 0) throw new ErroCliente(`"${p.nome}" não está disponível para pedido online.`)
     const totalItem = centavos(unitario * item.quantidade)
     subtotal = centavos(subtotal + totalItem)
     const varianteNome = variante ? String(variante.nome ?? variante.label ?? "") : null
@@ -287,7 +320,7 @@ async function criarPedido(req: Request, body: any) {
       cliente_nome: primeiroNome,
       cliente_sobrenome: resto.join(" "),
       cliente_telefone: formatarTelefone(entrada.telefone),
-      cliente_email: entrada.email,
+      cliente_email: entrada.email || null,
       entrega_domicilio: false,
       forma_pagamento: entrada.forma,
       subtotal,
@@ -296,13 +329,35 @@ async function criarPedido(req: Request, body: any) {
       itens: itensPedido,
       status: "Pedido criado",
       observacoes: entrada.observacoes,
-      mercado_pago_status: "pending",
+      // null = pedido sem cobrança online (paga na retirada/entrega)
+      mercado_pago_status: config.pagamento_online ? "pending" : null,
     })
     .select("id, codigo_pedido, total")
     .single()
   if (errPedido) throw errPedido
 
+  if (!config.pagamento_online) {
+    // Resumo com os valores do servidor para a mensagem de WhatsApp do cliente
+    return json({
+      pedido_id: pedido.id,
+      codigo_pedido: pedido.codigo_pedido,
+      total: Number(pedido.total),
+      checkout_url: null,
+      resumo: {
+        codigo_pedido: pedido.codigo_pedido,
+        cliente_nome: entrada.nome,
+        tipo_venda: entrada.tipoVenda,
+        forma_pagamento: entrada.forma,
+        pagamento_online: false,
+        total: Number(pedido.total),
+        observacoes: entrada.observacoes,
+        itens: itensPedido.map((i) => ({ nome: i.produto.nome, quantidade: i.quantidade, subtotal: i.subtotal })),
+      },
+    })
+  }
+
   // Preferência do Checkout Pro limitada à forma escolhida
+  const formaOnline = entrada.forma as FormaPagamento
   const tiposExcluidos: Record<FormaPagamento, string[]> = {
     pix: ["credit_card", "debit_card", "prepaid_card", "ticket", "atm"],
     credito: ["debit_card", "prepaid_card", "bank_transfer", "ticket", "atm"],
@@ -337,7 +392,7 @@ async function criarPedido(req: Request, body: any) {
           ...(baseRetorno.protocol === "https:" ? { auto_return: "approved" } : {}),
           notification_url: `${supabaseUrl}/functions/v1/catalogo-pedidos?webhook=1&e=${estabelecimentoId}`,
           payment_methods: {
-            excluded_payment_types: tiposExcluidos[entrada.forma].map((id) => ({ id })),
+            excluded_payment_types: tiposExcluidos[formaOnline].map((id) => ({ id })),
             installments: entrada.forma === "credito" ? config.max_parcelas : 1,
             default_installments: 1,
           },
@@ -438,8 +493,10 @@ async function confirmarPedido(body: any) {
     .eq("estabelecimento_id", pedido.estabelecimento_id)
     .maybeSingle()
 
+  // Pedido criado sem cobrança online não tem pagamento para consultar
+  const pagamentoOnline = pedido.mercado_pago_status !== null
   let checkoutUrl: string | null = null
-  if (cfg?.access_token && !pedido.cancelado) {
+  if (pagamentoOnline && cfg?.access_token && !pedido.cancelado) {
     const busca = await mp<{ results: any[] }>(
       cfg.access_token,
       `/v1/payments/search?external_reference=${pedido.id}&sort=date_created&criteria=desc`,
@@ -465,8 +522,11 @@ async function confirmarPedido(body: any) {
   return json({
     pedido_id: pedido.id,
     codigo_pedido: pedido.codigo_pedido,
+    cliente_nome: [pedido.cliente_nome, pedido.cliente_sobrenome].filter(Boolean).join(" "),
+    observacoes: pedido.observacoes ?? null,
     tipo_venda: pedido.tipo_venda,
     forma_pagamento: pedido.forma_pagamento,
+    pagamento_online: pagamentoOnline,
     status_pagamento: pedido.mercado_pago_status,
     status_pedido: pedido.status,
     cancelado: !!pedido.cancelado,

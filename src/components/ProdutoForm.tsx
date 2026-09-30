@@ -35,6 +35,7 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
   const [preco, setPreco] = useState("")
   const [precoPromocional, setPrecoPromocional] = useState("")
   const [precoAtacado, setPrecoAtacado] = useState("")
+  const [precoOnline, setPrecoOnline] = useState("")
   const [categoria, setCategoria] = useState<string>("")
   const [urlImagem, setUrlImagem] = useState("")
   const [requiresStock, setRequiresStock] = useState(true)
@@ -45,6 +46,7 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
   const precoNumerico = parsearMoeda(preco)
   const precoPromocionalNumerico = parsearMoeda(precoPromocional)
   const precoAtacadoNumerico = parsearMoeda(precoAtacado)
+  const precoOnlineNumerico = parsearMoeda(precoOnline)
 
   // Validação: custo não pode ser maior que o preço de venda.
   // Só acusa erro quando ambos os campos têm valor, para não reclamar
@@ -60,6 +62,10 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
   const atacadoAbaixoDoCusto =
     precoAtacadoNumerico > 0 && custoNumerico > 0 && precoAtacadoNumerico < custoNumerico
 
+  // Validação: preço do pedido online não pode ficar abaixo do custo
+  const onlineAbaixoDoCusto =
+    precoOnlineNumerico > 0 && custoNumerico > 0 && precoOnlineNumerico < custoNumerico
+
   const erroCusto = custoMaiorQuePreco
     ? `O custo (${formatarMoeda(custoNumerico)}) é maior que o preço de venda (${formatarMoeda(precoNumerico)}). Confira se digitou o valor com a vírgula no lugar certo.`
     : ""
@@ -70,6 +76,10 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
 
   const erroPrecoAtacado = atacadoAbaixoDoCusto
     ? `O preço de atacado (${formatarMoeda(precoAtacadoNumerico)}) está abaixo do custo (${formatarMoeda(custoNumerico)}), o que gera prejuízo na venda.`
+    : ""
+
+  const erroPrecoOnline = onlineAbaixoDoCusto
+    ? `O preço do pedido online (${formatarMoeda(precoOnlineNumerico)}) está abaixo do custo (${formatarMoeda(custoNumerico)}), o que gera prejuízo na venda.`
     : ""
 
   const formularioInvalido =
@@ -112,6 +122,11 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
       setPrecoAtacado(
         (produtoParaEditar as any).preco_atacado
           ? formatarValorParaEdicao(parsearMoeda((produtoParaEditar as any).preco_atacado))
+          : ""
+      )
+      setPrecoOnline(
+        (produtoParaEditar as any).preco_online
+          ? formatarValorParaEdicao(parsearMoeda((produtoParaEditar as any).preco_online))
           : ""
       )
       setCategoria(produtoParaEditar.categoria)
@@ -162,6 +177,7 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
       preco_promocional: precoPromocionalNumerico > 0 ? precoPromocionalNumerico : null,
       precoPromocional: precoPromocionalNumerico > 0 ? precoPromocionalNumerico : null,
       preco_atacado: precoAtacadoNumerico > 0 ? precoAtacadoNumerico : null,
+      preco_online: precoOnlineNumerico > 0 ? precoOnlineNumerico : null,
       categoria_id: categoriaSelecionada?.id || null,
       categoria_nome: categoria,
       categoria,
@@ -256,6 +272,30 @@ export default function ProdutoForm({ produtoParaEditar, onSave, onCancel, savin
             </p>
           )}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="precoOnline">Preço para Pedido Online (R$)</Label>
+        <Input
+          id="precoOnline"
+          type="text"
+          inputMode="decimal"
+          placeholder="0,00 (opcional)"
+          value={precoOnline}
+          onChange={(e) => setPrecoOnline(aplicarMascaraMoeda(e.target.value))}
+          aria-invalid={!!erroPrecoOnline}
+          aria-describedby={erroPrecoOnline ? "online-erro" : "online-ajuda"}
+          className={erroPrecoOnline ? "border-amber-500 focus-visible:ring-amber-500" : ""}
+        />
+        {erroPrecoOnline ? (
+          <p id="online-erro" role="alert" className="text-sm text-amber-600 font-medium">
+            ⚠️ {erroPrecoOnline}
+          </p>
+        ) : (
+          <p id="online-ajuda" className="text-xs text-muted-foreground">
+            Preço cobrado nos pedidos feitos pelo catálogo (varejo), separado do preço do PDV. Em branco, vale o preço do PDV.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

@@ -382,7 +382,7 @@ export default function HistoricoVendas() {
               >
                 <option value="TODOS">Todos</option>
                 <option value="PDV">PDV</option>
-                <option value="DELIVERY">Delivery</option>
+                <option value="DELIVERY">Link de pedidos</option>
                 <option value="INTERNAL_CONSUMPTION">Venda Interna</option>
               </select>
             </div>

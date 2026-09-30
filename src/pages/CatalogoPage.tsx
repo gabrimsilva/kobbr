@@ -100,7 +100,7 @@ export default function CatalogoPage() {
 
       // Variantes (cor, tamanho...) e configuração da loja online
       const stockIds = [...estoqueMap.values()].map(e => e.id)
-      const [variantesResult, configLoja] = await Promise.all([
+      const [variantesResult, configLoja, reservadoResult] = await Promise.all([
         stockIds.length > 0
           ? supabase
               .from('stock_variants')
@@ -108,15 +108,28 @@ export default function CatalogoPage() {
               .in('stock_item_id', stockIds)
               .order('nome', { ascending: true })
           : Promise.resolve({ data: [], error: null }),
-        lojaOnlineService.buscarConfigPublica()
+        lojaOnlineService.buscarConfigPublica(),
+        // Itens de pedidos em aberto (ainda não baixados) seguram o estoque
+        supabase.rpc('catalogo_estoque_reservado')
       ])
+      if (reservadoResult.error) {
+        console.warn('⚠️ Erro ao buscar estoque reservado:', reservadoResult.error)
+      }
+      const reservadoPorProduto = new Map<string, number>()
+      const reservadoPorVariante = new Map<string, number>()
+      ;((reservadoResult.data as Array<{ produto_id: string; variante_id: string | null; quantidade: number }> | null) || []).forEach(r => {
+        const qtd = Number(r.quantidade) || 0
+        reservadoPorProduto.set(r.produto_id, (reservadoPorProduto.get(r.produto_id) || 0) + qtd)
+        if (r.variante_id) reservadoPorVariante.set(r.variante_id, (reservadoPorVariante.get(r.variante_id) || 0) + qtd)
+      })
       if (variantesResult.error) {
         console.warn('⚠️ Erro ao buscar variantes:', variantesResult.error)
       }
       const variantesMap = new Map<string, Array<{ id: string; nome: string; quantidade: number }>>()
       ;(variantesResult.data || []).forEach((v: any) => {
         const lista = variantesMap.get(v.stock_item_id) || []
-        lista.push({ id: v.id, nome: v.nome || v.label || 'Opção', quantidade: parseFloat(v.quantidade) || 0 })
+        const saldo = (parseFloat(v.quantidade) || 0) - (reservadoPorVariante.get(v.id) || 0)
+        lista.push({ id: v.id, nome: v.nome || v.label || 'Opção', quantidade: Math.max(saldo, 0) })
         variantesMap.set(v.stock_item_id, lista)
       })
       setLojaConfig(configLoja)
@@ -135,7 +148,8 @@ export default function CatalogoPage() {
         .filter(p => p.ativo)
         .map(p => {
           const estoque = estoqueMap.get(p.id)
-          const saldoEstoque = estoque?.quantidade ?? 0
+          // Saldo disponível = estoque físico - reservado em pedidos abertos
+          const saldoEstoque = Math.max((estoque?.quantidade ?? 0) - (reservadoPorProduto.get(p.id) || 0), 0)
           // Mesma regra do servidor: sem stock_item ou requires_stock = false não controla
           const controlaEstoque = p.requires_stock !== false && !!estoque
           return {
@@ -145,6 +159,7 @@ export default function CatalogoPage() {
             preco: Number(p.preco),
             precoPromocional: p.preco_promocional != null ? Number(p.preco_promocional) : undefined,
             precoAtacado: p.preco_atacado != null ? Number(p.preco_atacado) : null,
+            precoOnline: p.preco_online != null ? Number(p.preco_online) : null,
             categoria: p.categoria_nome || 'Outros',
             urlImagem: p.imagem_path || '/placeholder-food.svg',
             estoqueDisponivel: controlaEstoque ? saldoEstoque > 0 : true,
@@ -421,6 +436,7 @@ export default function CatalogoPage() {
             produtos={produtosPorId}
             modo={modo}
             config={lojaConfig}
+            whatsappLoja={configuracao.telefone}
             onAlterarQuantidade={carrinho.alterarQuantidade}
             onRemover={carrinho.remover}
             onPedidoCriado={carrinho.limpar}

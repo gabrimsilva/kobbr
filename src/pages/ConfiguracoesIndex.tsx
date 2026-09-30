@@ -7,8 +7,7 @@ import {
   Clock,
   CreditCard,
   Palette,
-  ArrowLeft,
-  Plug
+  ArrowLeft
 } from "lucide-react"
 
 // Importar as páginas de configuração
@@ -16,7 +15,6 @@ import ConfiguracoesGeraisPage from "@/pages/configuracoes/ConfiguracoesGeraisPa
 import ConfiguracoesHorarioPage from "@/pages/configuracoes/ConfiguracoesHorarioPage"
 import ConfiguracoesPagamentoPage from "@/pages/configuracoes/ConfiguracoesPagamentoPage"
 import ConfiguracoesVisuaisPage from "@/pages/configuracoes/ConfiguracoesVisuaisPage"
-import ConfiguracoesIntegracoesPage from "@/pages/configuracoes/ConfiguracoesIntegracoesPage"
 
 type ConfigPage =
   | 'index'
@@ -24,7 +22,6 @@ type ConfigPage =
   | 'horario'
   | 'pagamento'
   | 'visuais'
-  | 'integracoes'
 
 interface ConfigCard {
   id: ConfigPage
@@ -45,16 +42,9 @@ const configCards: ConfigCard[] = [
   {
     id: 'pagamento',
     title: 'Pagamentos',
-    description: 'Formas de pagamento e configurações PIX',
+    description: 'Balcão/PDV e pagamento online do catálogo (Mercado Pago)',
     icon: <CreditCard className="h-6 w-6" />,
     color: 'text-pink-600'
-  },
-  {
-    id: 'integracoes',
-    title: 'Integração de Pagamentos',
-    description: 'Mercado Pago, PIX, cartões e atacado para os pedidos do catálogo',
-    icon: <Plug className="h-6 w-6" />,
-    color: 'text-sky-600'
   },
   {
     id: 'horario',
@@ -108,7 +98,6 @@ export default function ConfiguracoesIndex({ initialPage = 'index' }: Configurac
         {currentPage === 'horario' && <ConfiguracoesHorarioPage />}
         {currentPage === 'pagamento' && <ConfiguracoesPagamentoPage />}
         {currentPage === 'visuais' && <ConfiguracoesVisuaisPage />}
-        {currentPage === 'integracoes' && <ConfiguracoesIntegracoesPage />}
       </div>
     )
   }

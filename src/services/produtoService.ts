@@ -301,6 +301,9 @@ export const produtoService: ProdutoService = {
         custo: (data as any).custo !== undefined ? (data as any).custo : undefined,
         preco: data.preco,
         preco_promocional: data.preco_promocional ?? null,
+        // undefined = não veio no payload (mantém); null = limpar
+        preco_atacado: data.preco_atacado,
+        preco_online: data.preco_online,
         categoria_id: data.categoria_id,
         categoria_nome: data.categoria_nome,
         imagem_path: data.imagem_path,

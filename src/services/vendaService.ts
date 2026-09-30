@@ -327,7 +327,7 @@ class VendaService {
         change_amount: pedido.valor_troco || null,
         sale_type: 'DELIVERY',
         items: itensEnriquecidos,
-        notes: `Pedido Delivery #${pedido.codigo_pedido || pedido.pedido_id} - Cliente: ${pedido.cliente_nome} ${pedido.cliente_sobrenome || ''}`,
+        notes: `Link de pedidos #${pedido.codigo_pedido || pedido.pedido_id} - Cliente: ${pedido.cliente_nome} ${pedido.cliente_sobrenome || ''}`,
         created_by: user?.id || null
       })
 

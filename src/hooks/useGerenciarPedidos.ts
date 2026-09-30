@@ -124,6 +124,17 @@ export function useGerenciarPedidos(
       // Normalizar status
       let statusFinal = novoStatus
 
+      // Baixa de estoque ao chegar em "Prontos p/ Entrega" (Liberado) ou, se o
+      // pedido pular essa coluna, ao finalizar. Se falhar, o status não muda.
+      let estoqueAlerta: string | null | undefined = pedidoAtual?.estoque_alerta
+      if ((statusFinal === 'Liberado' || statusFinal === 'Finalizado') && pedidoAtual && !pedidoAtual.estoque_baixado) {
+        const baixa = await pedidoDeliveryService.baixarEstoque(pedidoAtual.id)
+        estoqueAlerta = baixa.alertas.length > 0 ? baixa.alertas.join('; ') : null
+        if (estoqueAlerta) {
+          toast.error(`Estoque insuficiente: ${estoqueAlerta}`, { duration: 8000 })
+        }
+      }
+
       // 🆕 SE STATUS FOR FINALIZADO: Integrar com vendas e estoque
       if (statusFinal === 'Finalizado' && pedidoAtual) {
         console.log(`🎯 Finalizando pedido delivery: ${pedidoId}`)
@@ -186,7 +197,9 @@ export function useGerenciarPedidos(
         setPedidos(prevPedidos =>
           prevPedidos.map(pedido =>
             pedido.pedido_id === pedidoId
-              ? { ...pedido, status: statusFinal }
+              ? statusFinal === 'Liberado'
+                ? { ...pedido, status: statusFinal, estoque_baixado: true, estoque_alerta: estoqueAlerta }
+                : { ...pedido, status: statusFinal }
               : pedido
           )
         )

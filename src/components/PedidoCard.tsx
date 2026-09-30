@@ -79,7 +79,10 @@ export default function PedidoCard({ pedido, onStatusChange: _, onCancelar, isDr
   // Pagamento online (pedidos do catálogo via Mercado Pago)
   const statusMp = (pedido as any).mercado_pago_status as string | null | undefined
   const pagamentoBadge =
-    statusMp === 'approved'
+    !statusMp
+      // Pedido sem cobrança online: pago na retirada/entrega
+      ? { texto: 'A receber', classe: 'bg-sky-600 hover:bg-sky-600' }
+      : statusMp === 'approved'
       ? { texto: 'Pago', classe: 'bg-green-500 hover:bg-green-500' }
       : ['rejected', 'cancelled', 'valor_divergente'].includes(statusMp ?? '')
         ? { texto: 'Pgto recusado', classe: 'bg-red-600 hover:bg-red-600' }

@@ -2,24 +2,28 @@ import type { ProdutoCatalogo } from "@/components/delivery/CatalogoProdutoCard"
 import type { TipoVenda } from "@/services/lojaOnlineService"
 
 /**
- * Preço unitário de um produto no modo de venda escolhido.
- * Mesma regra da edge function `catalogo-pedidos` (o servidor recalcula tudo):
- * - varejo: preço promocional quando menor que o preço normal
- * - atacado: preço de atacado quando cadastrado, senão o preço de varejo
+ * Preço unitário de um produto no modo de venda escolhido. O catálogo nunca
+ * usa o preço do PDV. Mesma regra da edge function `catalogo-pedidos`
+ * (o servidor recalcula tudo):
+ * - varejo: "Preço para Pedido Online" do cadastro (0 enquanto não preenchido)
+ * - atacado: "Preço de Atacado" quando cadastrado, senão o preço online
  */
 export function precoUnitario(produto: ProdutoCatalogo, modo: TipoVenda): number {
-  const preco = Number(produto.preco) || 0
-  const promo = Number(produto.precoPromocional) || 0
-  const varejo = promo > 0 && promo < preco ? promo : preco
   if (modo === "atacado" && Number(produto.precoAtacado) > 0) return Number(produto.precoAtacado)
-  return varejo
+  return Number(produto.precoOnline) || 0
 }
 
-/** Preço "de" riscado: promoção no varejo ou diferença do atacado */
+/** Produto sem preço online cadastrado: aparece com R$ 0,00 e não pode ser pedido */
+export function semPrecoOnline(produto: ProdutoCatalogo, modo: TipoVenda): boolean {
+  return precoUnitario(produto, modo) <= 0
+}
+
+/** Preço "de" riscado: no atacado, o preço online quando maior que o de atacado */
 export function precoAnterior(produto: ProdutoCatalogo, modo: TipoVenda): number | null {
+  if (modo !== "atacado") return null
   const atual = precoUnitario(produto, modo)
-  const preco = Number(produto.preco) || 0
-  return preco > atual ? preco : null
+  const online = Number(produto.precoOnline) || 0
+  return online > atual ? online : null
 }
 
 /** Quantidade disponível para compra (null = sem controle de estoque) */

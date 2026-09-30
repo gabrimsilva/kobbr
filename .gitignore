@@ -49,3 +49,6 @@ CREDENCIAIS_ADMIN.md
 
 # MCP do Claude Code (contém access token do Supabase — NÃO commitar)
 .mcp.json
+
+# Supabase CLI temp
+supabase/.temp/

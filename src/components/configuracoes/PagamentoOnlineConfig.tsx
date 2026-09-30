@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { CheckCircle2, ExternalLink, KeyRound, Loader2, Save, ShoppingBag, AlertTriangle } from "lucide-react"
+import { CheckCircle2, ExternalLink, KeyRound, Loader2, Save, ShoppingBag, AlertTriangle, Info } from "lucide-react"
 import { lojaOnlineService, type ConfigLojaOnline } from "@/services/lojaOnlineService"
 import { aplicarMascaraMoeda, formatarValorParaEdicao, parsearMoeda } from "@/utils/formatacao"
 
 /**
- * Configurações > Integração de Pagamentos
- * Mercado Pago (Checkout Pro) para os pedidos feitos pelo catálogo, formas
- * de pagamento online e regras do atacado.
+ * Configurações > Pagamentos > aba Loja online
+ * Pedidos feitos pelo catálogo: com ou sem cobrança online (Mercado Pago
+ * Checkout Pro), formas de pagamento online e regras do atacado.
  */
-export default function ConfiguracoesIntegracoesPage() {
+export function PagamentoOnlineConfig() {
   const [config, setConfig] = useState<ConfigLojaOnline | null>(null)
   const [pedidoMinimo, setPedidoMinimo] = useState("")
   const [novoToken, setNovoToken] = useState("")
@@ -56,8 +56,8 @@ export default function ConfiguracoesIntegracoesPage() {
       toast.error("O Access Token deve começar com TEST- ou APP_USR-")
       return
     }
-    if (config.pedidos_ativos && (!temToken || nenhumaForma)) {
-      toast.error("Para ativar os pedidos, informe o Access Token e ative ao menos uma forma de pagamento.")
+    if (config.pedidos_ativos && config.pagamento_online && (!temToken || nenhumaForma)) {
+      toast.error("Para cobrar online, informe o Access Token e ative ao menos uma forma de pagamento.")
       return
     }
     setSalvando(true)
@@ -78,14 +78,7 @@ export default function ConfiguracoesIntegracoesPage() {
   }
 
   return (
-    <div className="container mx-auto space-y-6 max-w-3xl">
-      <div>
-        <h2 className="text-2xl font-bold">Integração de Pagamentos</h2>
-        <p className="text-muted-foreground">
-          Pagamento online dos pedidos feitos pelo catálogo, via Mercado Pago
-        </p>
-      </div>
-
+    <div className="space-y-6">
       {/* Ativação */}
       <Card>
         <CardHeader>
@@ -97,7 +90,7 @@ export default function ConfiguracoesIntegracoesPage() {
             Quando ativo, o catálogo mostra preços, carrinho e checkout. Cada pedido cai em Pedidos.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Switch
             id="pedidos-ativos"
             checked={config.pedidos_ativos}
@@ -105,12 +98,31 @@ export default function ConfiguracoesIntegracoesPage() {
             label="Receber pedidos pelo catálogo"
             description={
               config.pedidos_ativos
-                ? "Clientes podem comprar e pagar online."
+                ? "Clientes montam o carrinho e enviam o pedido pelo catálogo."
                 : "O catálogo continua apenas como vitrine, com contato pelo WhatsApp."
+            }
+          />
+          <Switch
+            id="pagamento-online"
+            checked={config.pagamento_online}
+            onChange={v => atualizar("pagamento_online", v)}
+            label="Cobrar pagamento online (Mercado Pago)"
+            description={
+              config.pagamento_online
+                ? "O cliente paga no Mercado Pago antes do pedido ser confirmado."
+                : "O pedido cai direto em Pedidos e o cliente paga na retirada/entrega."
             }
           />
         </CardContent>
       </Card>
+
+      {!config.pagamento_online && (
+        <p className="flex items-start gap-2 text-sm text-sky-800 bg-sky-50 border border-sky-200 rounded-lg p-3">
+          <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          O pagamento online está desligado. As configurações abaixo podem ser deixadas prontas e passam a valer
+          quando você ligar "Cobrar pagamento online".
+        </p>
+      )}
 
       {/* Mercado Pago */}
       <Card>
@@ -225,7 +237,7 @@ export default function ConfiguracoesIntegracoesPage() {
               <p className="text-xs text-muted-foreground">Juros do parcelamento seguem as regras da sua conta Mercado Pago.</p>
             </div>
           )}
-          {nenhumaForma && (
+          {nenhumaForma && config.pagamento_online && (
             <p className="text-sm text-amber-700" role="alert">Ative ao menos uma forma de pagamento.</p>
           )}
         </CardContent>

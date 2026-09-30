@@ -1,22 +1,56 @@
 /**
  * Serviço para integração de pedidos delivery com vendas e estoque
- * 
+ *
  * @module services/pedidoDeliveryService
  */
 
+import { supabase } from '@/lib/supabase'
 import { vendaService } from './vendaService'
-import { stockService } from './stockService'
+
+export interface ResultadoBaixaEstoque {
+  /** A baixa já tinha sido feita antes (pagamento online ou etapa anterior) */
+  jaBaixado: boolean
+  /** Itens que não tinham saldo suficiente (o saldo foi zerado) */
+  alertas: string[]
+}
 
 /**
  * Classe de serviço para gerenciar integração de pedidos delivery
  */
 class PedidoDeliveryService {
   /**
+   * Baixa o estoque do pedido (função baixar_estoque_pedido no banco).
+   * Idempotente: se já foi baixado, não baixa de novo. Chamada quando o pedido
+   * vai para "Prontos p/ Entrega" e, por segurança, ao finalizar.
+   *
+   * @param pedidoUuid - Coluna `id` do pedido (uuid)
+   */
+  async baixarEstoque(pedidoUuid: string): Promise<ResultadoBaixaEstoque> {
+    const { data, error } = await supabase.rpc('baixar_estoque_pedido', { p_pedido_id: pedidoUuid })
+    if (error) throw new Error(`Não foi possível baixar o estoque do pedido: ${error.message}`)
+    return {
+      jaBaixado: !!data?.ja_baixado,
+      alertas: Array.isArray(data?.alertas) ? data.alertas : []
+    }
+  }
+
+  /**
+   * Devolve ao estoque o que foi baixado para o pedido (pedido cancelado).
+   * Não faz nada se o estoque do pedido não foi baixado.
+   *
+   * @param pedidoUuid - Coluna `id` do pedido (uuid)
+   */
+  async estornarEstoque(pedidoUuid: string): Promise<boolean> {
+    const { data, error } = await supabase.rpc('estornar_estoque_pedido', { p_pedido_id: pedidoUuid })
+    if (error) throw new Error(`Não foi possível devolver o estoque do pedido: ${error.message}`)
+    return !!data?.estornado
+  }
+
+  /**
    * Finaliza um pedido delivery:
-   * 1. Cria registro em sales
-   * 2. Dá baixa no estoque
-   * 3. Registra movimentações
-   * 
+   * 1. Garante a baixa de estoque (normalmente já feita em "Prontos p/ Entrega")
+   * 2. Cria registro em sales (entra nas métricas)
+   *
    * @param pedido - Dados completos do pedido
    * @returns Objeto com sucesso e dados da venda criada
    */
@@ -27,102 +61,23 @@ class PedidoDeliveryService {
   }> {
     try {
       console.log(`🚀 Iniciando finalização do pedido delivery: ${pedido.codigo_pedido}`)
-      console.log(`📦 Dados do pedido:`, pedido)
 
-      // 1. VALIDAR E NORMALIZAR ITENS
-      let itens = pedido.itens || []
-      
-      // Se itens for string (JSON stringificado), fazer parse
-      if (typeof itens === 'string') {
-        try {
-          itens = JSON.parse(itens)
-        } catch {
-          console.warn(`⚠️ Não foi possível fazer parse de itens como JSON`)
-          itens = []
-        }
-      }
+      // Normalmente não faz nada: a baixa aconteceu em "Prontos p/ Entrega".
+      // Cobre pedidos arrastados direto para "Entregues".
+      const baixa = await this.baixarEstoque(pedido.id)
 
-      console.log(`📋 Itens do pedido (após normalização):`, itens)
-
-      // Pedidos do catálogo pagos online já tiveram o estoque baixado na
-      // confirmação do pagamento (função baixar_estoque_pedido no banco)
-      const estoqueJaBaixado = pedido.estoque_baixado === true
-
-      if (!Array.isArray(itens) || itens.length === 0) {
-        console.warn(`⚠️ Pedido sem itens ou itens em formato inválido`)
-        // Não falhar, apenas pular validação de estoque
-      } else if (!estoqueJaBaixado) {
-        // 2. VALIDAR ESTOQUE (mesma regra do PDV e das comandas).
-        // Roda ANTES de criar a venda: se faltar saldo em qualquer item, nada
-        // é persistido e nada é baixado.
-        await stockService.validarEstoqueVenda(
-          itens.map((item: any) => ({
-            produtoId: item.produto_id || item.produto?.id,
-            quantidade: item.quantidade || 1,
-            variantId: item.variantId || undefined,
-            nome: item.produto?.nome || item.nome
-          }))
-        )
-
-        console.log(`✅ Estoque validado para todos os itens`)
-      }
-
-      // 3. CRIAR VENDA EM SALES
-      console.log(`💾 Criando venda...`)
       const venda = await vendaService.criarVendaDelivery(pedido)
       console.log(`✅ Venda criada: ${venda?.sale_number}`)
 
-      // 4. DAR BAIXA NO ESTOQUE (após venda criada com sucesso).
-      // Esta é a ÚNICA baixa do fluxo delivery — o checkout não movimenta
-      // estoque, porque roda como `anon` e não tem permissão RLS nas tabelas
-      // stock_*. Falhas aqui são reportadas ao operador em vez de silenciadas.
-      const falhasBaixa: string[] = []
-
-      if (Array.isArray(itens) && itens.length > 0 && !estoqueJaBaixado) {
-        for (const item of itens) {
-          const produtoId = item.produto_id || item.produto?.id
-          const quantidade = item.quantidade || 1
-          const variantId = item.variantId || undefined
-
-          if (!produtoId) {
-            console.warn(`⚠️ Item sem produto ID, pulando baixa de estoque`)
-            continue
-          }
-
-          try {
-            await stockService.darBaixaEmVenda(
-              produtoId,
-              quantidade,
-              variantId,
-              'DELIVERY',
-              venda?.id
-            )
-            console.log(`✅ Baixa de estoque: ${quantidade} un`)
-          } catch (error) {
-            const nome = item.produto?.nome || item.nome || produtoId
-            const msg = error instanceof Error ? error.message : 'erro desconhecido'
-            console.error(`❌ ERRO ao dar baixa no estoque de ${nome}:`, error)
-            falhasBaixa.push(`${nome}: ${msg}`)
-          }
-        }
-      }
-
-      if (falhasBaixa.length > 0) {
-        // A venda foi criada, mas o estoque não fechou. Reportar para que o
-        // operador ajuste manualmente pela tela de Entrada / Saída.
+      if (!baixa.jaBaixado && baixa.alertas.length > 0) {
         return {
           sucesso: false,
           venda,
-          erro: `Venda criada, mas a baixa de estoque falhou em: ${falhasBaixa.join('; ')}`
+          erro: `Venda criada, mas faltou estoque em: ${baixa.alertas.join('; ')}`
         }
       }
 
-      console.log(`🎉 Pedido delivery finalizado com sucesso!`)
-
-      return {
-        sucesso: true,
-        venda
-      }
+      return { sucesso: true, venda }
     } catch (error) {
       console.error('❌ Erro ao finalizar pedido delivery:', error)
       return {

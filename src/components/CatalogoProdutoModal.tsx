@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { X, MessageCircle, Minus, Plus, ShoppingCart } from "lucide-react"
 import type { ProdutoCatalogo } from "@/components/delivery/CatalogoProdutoCard"
-import { disponivelParaCompra, formatarReais, precoAnterior, precoUnitario } from "@/components/catalogo/precos"
+import { disponivelParaCompra, formatarReais, precoAnterior, precoUnitario, semPrecoOnline } from "@/components/catalogo/precos"
 import type { TipoVenda } from "@/services/lojaOnlineService"
 import type { ItemCarrinhoCatalogo } from "@/hooks/useCarrinhoCatalogo"
 
@@ -79,7 +79,8 @@ export default function CatalogoProdutoModal({
   const restante = disponivel === null ? null : Math.max(disponivel - noCarrinho, 0)
   const precisaVariante = temVariantes && !varianteId
   const esgotado = !precisaVariante && restante !== null && restante <= 0
-  const podeAdicionar = !!compra && !precisaVariante && !esgotado && quantidade >= 1
+  const semPreco = !!compra && semPrecoOnline(produto, compra.modo)
+  const podeAdicionar = !!compra && !semPreco && !precisaVariante && !esgotado && quantidade >= 1
 
   const preco = compra ? precoUnitario(produto, compra.modo) : null
   const anterior = compra ? precoAnterior(produto, compra.modo) : null
@@ -234,13 +235,20 @@ export default function CatalogoProdutoModal({
                 </div>
               )}
 
+              {semPreco && (
+                <p className="text-sm text-amber-700 font-medium" role="status">
+                  Produto ainda sem preço para pedido online. Fale com a loja pelo WhatsApp.
+                </p>
+              )}
               {esgotado && (
                 <p className="text-sm text-red-600 font-medium" role="status">
                   {noCarrinho > 0 ? "Você já adicionou todo o estoque disponível." : "Produto esgotado."}
                 </p>
               )}
-              {!esgotado && !precisaVariante && restante !== null && restante <= 10 && (
-                <p className="text-xs text-amber-700" role="status">Restam {restante} unidade(s).</p>
+              {!esgotado && !precisaVariante && restante !== null && (
+                <p className={`text-xs ${restante <= 10 ? "text-amber-700" : "text-gray-500"}`} role="status">
+                  {restante <= 10 ? `Restam ${restante} unidade(s).` : `${restante} unidades disponíveis.`}
+                </p>
               )}
 
               <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
@@ -250,7 +258,9 @@ export default function CatalogoProdutoModal({
                   className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-5 text-base cursor-pointer shadow-lg flex items-center justify-center gap-2"
                 >
                   <ShoppingCart className="h-5 w-5" />
-                  {precisaVariante
+                  {semPreco
+                    ? "Indisponível para pedido online"
+                    : precisaVariante
                     ? "Escolha uma opção"
                     : `Adicionar${preco !== null ? ` · ${formatarReais(preco * quantidade)}` : ""}`}
                 </Button>

@@ -19,8 +19,7 @@ import {
   Palette,
   UserCog,
   TrendingUp,
-  ClipboardList,
-  Plug
+  ClipboardList
 } from "lucide-react"
 import MobileAdminHeader from "../MobileAdminHeader"
 import { useConfig } from "@/contexts/ConfigContext"
@@ -103,11 +102,6 @@ const menuItems = [
         title: "Pagamentos",
         icon: CreditCard,
         id: "configuracoes-pagamento"
-      },
-      {
-        title: "Integração de Pagamentos",
-        icon: Plug,
-        id: "configuracoes-integracoes"
       },
       {
         title: "Aparência",

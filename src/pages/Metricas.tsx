@@ -33,7 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
-import { CalendarIcon, TrendingUp, DollarSign, ShoppingCart, Package } from "lucide-react"
+import { CalendarIcon, TrendingUp, DollarSign, ShoppingCart, Package, Link2 } from "lucide-react"
 import { format, subDays, startOfDay, endOfDay } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
@@ -176,28 +176,6 @@ export default function Metricas() {
 
       const vendasData = vendas || []
 
-      // NOVO: Também incluir pedidos em aberto (não finalizados) de DELIVERY
-      // para rastrear formas de pagamento hoje
-      let pedidosAbertoData = []
-      if (filtroTipoVenda === 'TODOS' || filtroTipoVenda === 'DELIVERY') {
-        let pedidosQuery = supabase
-          .from('pedidos')
-          .select('*')
-          .gte('criado_em', inicio)
-          .lte('criado_em', fim)
-          .neq('status', 'Finalizado')  // Excluir finalizados (já estão em sales)
-          .neq('status', 'Entregue')
-          .neq('status', 'Retirado')
-          .neq('status', 'Cancelado')
-
-        if (estabId) {
-          pedidosQuery = pedidosQuery.eq('estabelecimento_id', estabId)
-        }
-
-        const { data: pedidosData } = await pedidosQuery
-        pedidosAbertoData = pedidosData || []
-      }
-
       // Vendas registradas em 'sales' (PDV + Delivery)
       const faturamentoSales = vendasData.reduce((sum, v) => sum + (parseFloat(v.total_amount) || 0), 0)
       const quantidadeSales = vendasData.length
@@ -208,7 +186,9 @@ export default function Metricas() {
         return sum + itens.reduce((itemSum: number, item: any) => itemSum + (item.quantidade || 0), 0)
       }, 0)
 
-      // Separar métricas por tipo de venda (PDV vs DELIVERY)
+      // Separar métricas por tipo de venda (PDV vs DELIVERY).
+      // DELIVERY = pedidos do Kanban (link de pedidos do catálogo), registrados
+      // em sales quando o pedido é entregue.
       const vendasPDV = vendasData.filter(v => v.sale_type === 'PDV')
       const vendasDelivery = vendasData.filter(v => v.sale_type === 'DELIVERY')
 
@@ -321,7 +301,7 @@ export default function Metricas() {
         .map(([categoria, dados]) => ({ categoria, ...dados }))
         .sort((a, b) => b.total - a.total)
 
-      // Faturamento por forma de pagamento (incluindo pedidos em aberto)
+      // Faturamento por forma de pagamento (só vendas concluídas, igual ao faturamento)
       const traduzirFormaPagamento = (forma: string) => {
         const traducoes: Record<string, string> = {
           'CASH': 'Dinheiro',
@@ -329,6 +309,8 @@ export default function Metricas() {
           'CREDIT': 'Crédito',
           'PIX': 'PIX',
           'dinheiro': 'Dinheiro',
+          'debito': 'Débito',
+          'credito': 'Crédito',
           'cartaoDebito': 'Débito',
           'cartaoCredito': 'Crédito',
           'pix': 'PIX',
@@ -352,16 +334,7 @@ export default function Metricas() {
         })
       })
 
-      // NOVO: Adicionar dados de pedidos em aberto (delivery)
-      pedidosAbertoData.forEach((pedido: any) => {
-        const forma = traduzirFormaPagamento(pedido.forma_pagamento || "Não informado")
-        const atual = formasPagamentoMap.get(forma) || { total: 0, quantidade: 0 }
-        formasPagamentoMap.set(forma, {
-          total: atual.total + (parseFloat(pedido.total) || 0),
-          quantidade: atual.quantidade + 1
-        })
-      })
-      
+
       const faturamentoPorFormaPagamento = Array.from(formasPagamentoMap.entries())
         .map(([forma, dados]) => ({ forma, ...dados }))
         .sort((a, b) => b.total - a.total)
@@ -441,7 +414,7 @@ export default function Metricas() {
           const receitaItem = item.precoTotal || quantidade * precoUnitario
           registrarDiagnostico(
             item.produto?.nome || 'Produto sem nome',
-            venda.sale_type === 'DELIVERY' ? 'Delivery' : 'PDV',
+            venda.sale_type === 'DELIVERY' ? 'Link de pedidos' : 'PDV',
             quantidade,
             receitaItem,
             custo
@@ -712,7 +685,7 @@ export default function Metricas() {
                 <SelectContent>
                   <SelectItem value="TODOS">Todos os tipos</SelectItem>
                   <SelectItem value="PDV">PDV</SelectItem>
-                  <SelectItem value="DELIVERY">Delivery</SelectItem>
+                  <SelectItem value="DELIVERY">Link de pedidos</SelectItem>
                   <SelectItem value="COMANDA">Comandas</SelectItem>
                 </SelectContent>
               </Select>
@@ -855,6 +828,42 @@ export default function Metricas() {
                 <div className="text-2xl font-bold text-purple-700">{metricas?.quantidadeVendasPDV || 0}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Ticket médio: {formatarMoeda(metricas?.quantidadeVendasPDV ? (metricas?.faturamentoPDV || 0) / metricas.quantidadeVendasPDV : 0)}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* Cards de Resumo - Link de pedidos (catálogo) */}
+      {(filtroTipoVenda === "TODOS" || filtroTipoVenda === "DELIVERY") && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <Link2 className="h-4 w-4" /> Link de pedidos
+          </h3>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card className="border-sky-200 bg-gradient-to-br from-sky-50/50 to-cyan-50/30">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Faturamento pelo link</CardTitle>
+                <DollarSign className="h-4 w-4 text-sky-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-sky-700">{formatarMoeda(metricas?.faturamentoDelivery || 0)}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Pedidos entregues no período
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-sky-200 bg-gradient-to-br from-sky-50/50 to-cyan-50/30">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pedidos pelo link</CardTitle>
+                <ShoppingCart className="h-4 w-4 text-sky-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-sky-700">{metricas?.quantidadeVendasDelivery || 0}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Ticket médio: {formatarMoeda(metricas?.ticketMedioDelivery || 0)}
                 </p>
               </CardContent>
             </Card>

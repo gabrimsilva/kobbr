@@ -18,6 +18,8 @@ export interface ProdutoCatalogo {
   urlImagem: string
   estoqueDisponivel?: boolean
   quantidadeEstoque?: number
+  /** Preço do pedido online no varejo (null = usa o preço do PDV) */
+  precoOnline?: number | null
   /** Preço cobrado no modo atacado (null = usa o preço de varejo) */
   precoAtacado?: number | null
   /** false = produto vendido sem controle de estoque */
@@ -56,10 +58,16 @@ function CatalogoProdutoCard({
 }: CatalogoProdutoCardProps) {
   const preco = modoVenda ? precoUnitario(produto, modoVenda) : null
   const anterior = modoVenda ? precoAnterior(produto, modoVenda) : null
+  // Com pedidos ativos, produto sem saldo fica apagado (o modal e o servidor bloqueiam o pedido)
+  const esgotado =
+    !!modoVenda && produto.controlaEstoque !== false && (produto.quantidadeEstoque ?? 1) <= 0
 
   return (
     <Card 
-      className="overflow-hidden hover:shadow-lg transition-all duration-300 border border-purple-100 p-0 rounded-2xl"
+      className={`overflow-hidden transition-all duration-300 border border-purple-100 p-0 rounded-2xl ${
+        esgotado ? "grayscale opacity-60" : "hover:shadow-lg"
+      }`}
+      aria-disabled={esgotado || undefined}
       style={{ cursor: 'url(/pointer.png), pointer' }}
       onClick={() => onAbrirDetalhes(produto)}
     >
@@ -117,6 +125,7 @@ function CatalogoProdutoCard({
                   <span className="text-xs text-gray-400 line-through">{formatarReais(anterior)}</span>
                 )}
                 <span className="text-base md:text-lg font-bold text-purple-700">{formatarReais(preco)}</span>
+                {esgotado && <span className="text-xs font-semibold text-gray-600">Esgotado</span>}
               </div>
             ) : (
               <span />
@@ -151,6 +160,7 @@ function areEqual(prevProps: CatalogoProdutoCardProps, nextProps: CatalogoProdut
     prevProps.produto.preco === nextProps.produto.preco &&
     prevProps.produto.precoPromocional === nextProps.produto.precoPromocional &&
     prevProps.produto.precoAtacado === nextProps.produto.precoAtacado &&
+    prevProps.produto.precoOnline === nextProps.produto.precoOnline &&
     prevProps.produto.quantidadeEstoque === nextProps.produto.quantidadeEstoque &&
     prevProps.modoVenda === nextProps.modoVenda &&
     prevProps.onAbrirDetalhes === nextProps.onAbrirDetalhes

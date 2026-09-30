@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react"
+import { useSearchParams } from "react-router-dom"
 import { ActionButton } from "@/components/ui/action-button"
-import { Save, Loader2, CheckCircle } from "lucide-react"
+import { Save, Loader2, CheckCircle, Store, Globe } from "lucide-react"
 import { configuracaoService } from "@/services"
 import { FormasPagamentoConfig } from "@/components/configuracoes/FormasPagamentoConfig"
+import { PagamentoOnlineConfig } from "@/components/configuracoes/PagamentoOnlineConfig"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +16,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
+type AbaPagamento = 'balcao' | 'online'
+
 export default function ConfiguracoesPagamentoPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const aba: AbaPagamento = searchParams.get('aba') === 'online' ? 'online' : 'balcao'
+
   const [formasPagamento, setFormasPagamento] = useState({
     dinheiro: true,
     cartaoDebito: true,
@@ -25,8 +33,6 @@ export default function ConfiguracoesPagamentoPage() {
     ticketPromo: false
   })
   const [ticketsPromocionais, setTicketsPromocionais] = useState('10')
-  const [mercadoPagoAccessToken, setMercadoPagoAccessToken] = useState('')
-  const [mercadoPagoWebhookSecret, setMercadoPagoWebhookSecret] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
@@ -58,10 +64,6 @@ export default function ConfiguracoesPagamentoPage() {
           }
         } else if (cfg.chave === 'tickets_promocionais') {
           setTicketsPromocionais(cfg.valor)
-        } else if (cfg.chave === 'mercado_pago_access_token') {
-          setMercadoPagoAccessToken(cfg.valor)
-        } else if (cfg.chave === 'mercado_pago_webhook_secret') {
-          setMercadoPagoWebhookSecret(cfg.valor)
         }
       })
     } catch (err) {
@@ -91,20 +93,6 @@ export default function ConfiguracoesPagamentoPage() {
         configuracaoService.salvar('tickets_promocionais', ticketsPromocionais, 'Quantidade de tickets promocionais disponíveis', 'numero', 'pagamento')
       ]
 
-      // Salvar Access Token do Mercado Pago se PIX estiver ativado
-      if (formasPagamento.pix && mercadoPagoAccessToken) {
-        promises.push(
-          configuracaoService.salvar('mercado_pago_access_token', mercadoPagoAccessToken, 'Access Token do Mercado Pago para pagamentos PIX', 'texto', 'pagamento')
-        )
-      }
-
-      // Salvar Webhook Secret do Mercado Pago se fornecido
-      if (formasPagamento.pix && mercadoPagoWebhookSecret) {
-        promises.push(
-          configuracaoService.salvar('mercado_pago_webhook_secret', mercadoPagoWebhookSecret, 'Assinatura secreta do webhook do Mercado Pago', 'texto', 'pagamento')
-        )
-      }
-
       await Promise.all(promises)
 
       setShowSuccessDialog(true)
@@ -130,29 +118,45 @@ export default function ConfiguracoesPagamentoPage() {
   return (
     <div className="container mx-auto space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Formas de Pagamento</h2>
+        <h2 className="text-2xl font-bold">Pagamentos</h2>
         <p className="text-muted-foreground">
-          Configure os métodos de pagamento aceitos
+          Formas aceitas no balcão/PDV e pagamento online dos pedidos do catálogo
         </p>
       </div>
 
-      <FormasPagamentoConfig
-        formasPagamento={formasPagamento}
-        ticketsPromocionais={ticketsPromocionais}
-        mercadoPagoAccessToken={mercadoPagoAccessToken}
-        mercadoPagoWebhookSecret={mercadoPagoWebhookSecret}
-        onFormasPagamentoChange={handleFormasPagamentoChange}
-        onTicketsPromocionaisChange={setTicketsPromocionais}
-        onMercadoPagoAccessTokenChange={setMercadoPagoAccessToken}
-        onMercadoPagoWebhookSecretChange={setMercadoPagoWebhookSecret}
-      />
+      <Tabs
+        value={aba}
+        onValueChange={(valor) => setSearchParams(valor === 'online' ? { aba: 'online' } : {}, { replace: true })}
+      >
+        <TabsList className="h-auto">
+          <TabsTrigger value="balcao" className="gap-2 px-4 py-2">
+            <Store className="h-4 w-4" /> Balcão / PDV
+          </TabsTrigger>
+          <TabsTrigger value="online" className="gap-2 px-4 py-2">
+            <Globe className="h-4 w-4" /> Loja online (catálogo)
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="flex justify-end">
-        <ActionButton onClick={handleSalvar} loading={saving}>
-          <Save className="h-4 w-4 mr-2" />
-          Salvar Configurações
-        </ActionButton>
-      </div>
+        <TabsContent value="balcao" className="space-y-6 mt-6">
+          <FormasPagamentoConfig
+            formasPagamento={formasPagamento}
+            ticketsPromocionais={ticketsPromocionais}
+            onFormasPagamentoChange={handleFormasPagamentoChange}
+            onTicketsPromocionaisChange={setTicketsPromocionais}
+          />
+
+          <div className="flex justify-end">
+            <ActionButton onClick={handleSalvar} loading={saving}>
+              <Save className="h-4 w-4 mr-2" />
+              Salvar Configurações
+            </ActionButton>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="online" className="mt-6">
+          <PagamentoOnlineConfig />
+        </TabsContent>
+      </Tabs>
 
       <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
         <AlertDialogContent>

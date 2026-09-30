@@ -1,25 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useParams } from "react-router-dom"
-import { CheckCircle2, Clock, Loader2, XCircle, ArrowLeft } from "lucide-react"
+import { CheckCircle2, Clock, Loader2, XCircle, ArrowLeft, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { lojaOnlineService, type StatusPedidoCatalogo } from "@/services/lojaOnlineService"
 import { formatarReais } from "@/components/catalogo/precos"
+import { lerTelefoneLoja, linkWhatsAppLoja, montarMensagemPedido } from "@/components/catalogo/whatsappPedido"
 
 const INTERVALO_MS = 5000
 const MAX_TENTATIVAS = 36 // ~3 minutos aguardando o PIX / aprovação
 
 const FORMA_LABEL: Record<string, string> = {
   pix: "PIX",
+  dinheiro: "Dinheiro",
   credito: "Cartão de crédito",
   debito: "Cartão de débito",
   saldo_mercado_pago: "Saldo Mercado Pago",
 }
 
-type Situacao = "aprovado" | "aguardando" | "recusado" | "cancelado"
+type Situacao = "recebido" | "aprovado" | "aguardando" | "recusado" | "cancelado"
 
 function situacaoDo(pedido: StatusPedidoCatalogo): Situacao {
   if (pedido.status_pagamento === "approved") return "aprovado"
   if (pedido.cancelado) return "cancelado"
+  // Loja sem cobrança online: o pagamento acontece na retirada/entrega
+  if (!pedido.pagamento_online) return "recebido"
   if (["rejected", "cancelled", "refunded", "charged_back", "valor_divergente"].includes(pedido.status_pagamento ?? "")) {
     return "recusado"
   }
@@ -27,7 +31,8 @@ function situacaoDo(pedido: StatusPedidoCatalogo): Situacao {
 }
 
 /**
- * Página para onde o Mercado Pago devolve o cliente após o pagamento.
+ * Página para onde o Mercado Pago devolve o cliente após o pagamento (ou para
+ * onde o catálogo leva o cliente quando a loja não cobra online).
  * Consulta o status no servidor (que também confirma o pagamento e baixa o estoque).
  */
 export default function PedidoCatalogoStatus() {
@@ -89,7 +94,22 @@ export default function PedidoCatalogoStatus() {
   }
 
   const situacao = situacaoDo(pedido)
+  const linkWhatsApp =
+    situacao === "recebido" || situacao === "aprovado"
+      ? linkWhatsAppLoja(
+          lerTelefoneLoja(),
+          montarMensagemPedido({
+            ...pedido,
+            itens: pedido.itens.map(i => ({ nome: i.nome, quantidade: i.quantidade, subtotal: i.subtotal })),
+          })
+        )
+      : null
   const cabecalho = {
+    recebido: {
+      icone: <CheckCircle2 className="h-14 w-14 text-green-600" />,
+      titulo: "Pedido enviado!",
+      texto: "Recebemos seu pedido. Se o WhatsApp não abriu, toque no botão abaixo para enviar o resumo para a loja. O pagamento é feito na retirada/entrega.",
+    },
     aprovado: {
       icone: <CheckCircle2 className="h-14 w-14 text-green-600" />,
       titulo: "Pagamento aprovado!",
@@ -146,7 +166,17 @@ export default function PedidoCatalogoStatus() {
         </div>
 
         <div className="p-6 space-y-3">
-          {situacao !== "aprovado" && situacao !== "cancelado" && pedido.checkout_url && (
+          {linkWhatsApp && (
+            <Button
+              asChild
+              className="w-full h-12 text-base font-semibold bg-green-600 hover:bg-green-700 text-white"
+            >
+              <a href={linkWhatsApp} target="_blank" rel="noopener noreferrer">
+                <MessageCircle className="h-5 w-5" /> Enviar pedido pelo WhatsApp
+              </a>
+            </Button>
+          )}
+          {(situacao === "aguardando" || situacao === "recusado") && pedido.checkout_url && (
             <Button
               onClick={() => { window.location.href = pedido.checkout_url! }}
               className="w-full h-12 text-base font-semibold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"

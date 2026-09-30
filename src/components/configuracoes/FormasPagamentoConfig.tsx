@@ -110,7 +110,7 @@ export function FormasPagamentoConfig({
         <div className="flex items-center justify-between">
           <div>
             <p className="font-medium">PIX</p>
-            <p className="text-sm text-muted-foreground">Pagamento via QR Code (Mercado Pago)</p>
+            <p className="text-sm text-muted-foreground">Pagamento via QR Code PIX</p>
           </div>
           <Switch 
             checked={formasPagamento.pix}
@@ -118,7 +118,9 @@ export function FormasPagamentoConfig({
           />
         </div>
         
-        {formasPagamento.pix && (
+        {/* Credenciais legadas: só aparecem se a página ainda passar os handlers.
+            O Mercado Pago do catálogo fica na aba "Loja online" (PagamentoOnlineConfig). */}
+        {formasPagamento.pix && onMercadoPagoAccessTokenChange && (
           <div className="grid gap-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
             {/* Access Token */}
             <div className="grid gap-2">

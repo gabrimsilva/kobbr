@@ -1,6 +1,7 @@
 /**
- * Serviço da loja online: pedidos pelo catálogo público (varejo/atacado)
- * pagos via Mercado Pago Checkout Pro.
+ * Serviço da loja online: pedidos pelo catálogo público (varejo/atacado).
+ * Com `pagamento_online` o cliente paga via Mercado Pago Checkout Pro; sem ele o
+ * pedido vai direto para o Kanban e é pago na retirada/entrega.
  *
  * A criação do pedido e a confirmação do pagamento rodam na edge function
  * `catalogo-pedidos` (preços, estoque e status são sempre validados no servidor).
@@ -11,14 +12,18 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { tenantId } from './tenant'
+import type { ResumoPedidoWhatsApp } from '@/components/catalogo/whatsappPedido'
 
 export type TipoVenda = 'varejo' | 'atacado'
 export type FormaPagamentoOnline = 'pix' | 'credito' | 'debito'
+/** Formas aceitas no pedido; 'dinheiro' só existe quando não há cobrança online */
+export type FormaPagamentoPedido = FormaPagamentoOnline | 'dinheiro'
 
 /** Configuração pública (sem segredos) lida pelo catálogo */
 export interface ConfigCatalogoPublica {
   estabelecimento_id: string | null
   pedidos_ativos: boolean
+  pagamento_online: boolean
   pix: boolean
   credito: boolean
   debito: boolean
@@ -31,6 +36,7 @@ export interface ConfigCatalogoPublica {
 export interface ConfigLojaOnline {
   id?: string
   pedidos_ativos: boolean
+  pagamento_online: boolean
   ambiente: 'teste' | 'producao'
   token_configurado: boolean
   pix_ativo: boolean
@@ -43,8 +49,8 @@ export interface ConfigLojaOnline {
 
 export interface NovoPedidoCatalogo {
   tipo_venda: TipoVenda
-  forma_pagamento: FormaPagamentoOnline
-  cliente: { nome: string; telefone: string; email: string }
+  forma_pagamento: FormaPagamentoPedido
+  cliente: { nome: string; telefone: string; email?: string }
   itens: Array<{ produto_id: string; variante_id?: string | null; quantidade: number }>
   observacoes?: string
 }
@@ -53,14 +59,20 @@ export interface PedidoCriado {
   pedido_id: string
   codigo_pedido: string
   total: number
-  checkout_url: string
+  /** null quando a loja não cobra online */
+  checkout_url: string | null
+  /** Resumo para a mensagem de WhatsApp (pedidos sem pagamento online) */
+  resumo?: ResumoPedidoWhatsApp
 }
 
 export interface StatusPedidoCatalogo {
   pedido_id: string
   codigo_pedido: string
+  cliente_nome?: string
+  observacoes?: string | null
   tipo_venda: TipoVenda
   forma_pagamento: string
+  pagamento_online: boolean
   status_pagamento: string | null
   status_pedido: string
   cancelado: boolean
@@ -73,6 +85,7 @@ export interface StatusPedidoCatalogo {
 export const CONFIG_PUBLICA_PADRAO: ConfigCatalogoPublica = {
   estabelecimento_id: null,
   pedidos_ativos: false,
+  pagamento_online: false,
   pix: false,
   credito: false,
   debito: false,
@@ -83,6 +96,7 @@ export const CONFIG_PUBLICA_PADRAO: ConfigCatalogoPublica = {
 
 const CONFIG_LOJA_PADRAO: ConfigLojaOnline = {
   pedidos_ativos: false,
+  pagamento_online: false,
   ambiente: 'teste',
   token_configurado: false,
   pix_ativo: true,
@@ -94,7 +108,7 @@ const CONFIG_LOJA_PADRAO: ConfigLojaOnline = {
 }
 
 const COLUNAS_CONFIG =
-  'id, pedidos_ativos, ambiente, token_configurado, pix_ativo, credito_ativo, debito_ativo, max_parcelas, atacado_ativo, atacado_pedido_minimo'
+  'id, pedidos_ativos, pagamento_online, ambiente, token_configurado, pix_ativo, credito_ativo, debito_ativo, max_parcelas, atacado_ativo, atacado_pedido_minimo'
 
 /** Extrai a mensagem de erro amigável devolvida pela edge function */
 async function mensagemDeErro(error: unknown): Promise<string> {
@@ -165,6 +179,7 @@ export const lojaOnlineService = {
     const estabelecimentoId = tenantId()
     const campos: Record<string, unknown> = {
       pedidos_ativos: config.pedidos_ativos,
+      pagamento_online: config.pagamento_online,
       ambiente: config.ambiente,
       pix_ativo: config.pix_ativo,
       credito_ativo: config.credito_ativo,

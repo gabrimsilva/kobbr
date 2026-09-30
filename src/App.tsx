@@ -312,7 +312,7 @@ function AdminSystem() {
           <Route path="/configuracoes-horario" element={<Configuracoes initialPage="horario" />} />
           <Route path="/configuracoes-pagamento" element={<Configuracoes initialPage="pagamento" />} />
           <Route path="/configuracoes-visuais" element={<Configuracoes initialPage="visuais" />} />
-          <Route path="/configuracoes-integracoes" element={<Configuracoes initialPage="integracoes" />} />
+          <Route path="/configuracoes-integracoes" element={<Navigate to="/sistema/configuracoes-pagamento?aba=online" replace />} />
 
           {/* Multi-estabelecimento */}
           <Route path="/estabelecimentos" element={<Estabelecimentos />} />

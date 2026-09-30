@@ -3,12 +3,13 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, CreditCard, Loader2, Minus, Plus, QrCode, ShoppingBag, Trash2, Wallet } from "lucide-react"
+import { ArrowLeft, Banknote, CreditCard, Loader2, Minus, Plus, QrCode, ShoppingBag, Trash2, Wallet } from "lucide-react"
 import type { ProdutoCatalogo } from "@/components/delivery/CatalogoProdutoCard"
 import { chaveItem, type ItemCarrinhoCatalogo } from "@/hooks/useCarrinhoCatalogo"
 import { disponivelParaCompra, formatarReais, precoUnitario } from "./precos"
-import { lojaOnlineService, type ConfigCatalogoPublica, type FormaPagamentoOnline, type TipoVenda } from "@/services/lojaOnlineService"
+import { lojaOnlineService, type ConfigCatalogoPublica, type FormaPagamentoPedido, type TipoVenda } from "@/services/lojaOnlineService"
 import { formatarTelefone } from "@/utils/formatacao"
+import { linkWhatsAppLoja, montarMensagemPedido, salvarTelefoneLoja } from "./whatsappPedido"
 
 const CHAVE_CLIENTE = "kobe_cliente_catalogo"
 
@@ -19,15 +20,28 @@ interface CarrinhoCatalogoSheetProps {
   produtos: Map<string, ProdutoCatalogo>
   modo: TipoVenda
   config: ConfigCatalogoPublica
+  /** WhatsApp da loja: recebe o resumo do pedido quando não há pagamento online */
+  whatsappLoja: string
   onAlterarQuantidade: (chave: string, quantidade: number) => void
   onRemover: (chave: string) => void
   onPedidoCriado: () => void
 }
 
-const FORMAS: Array<{ id: FormaPagamentoOnline; titulo: string; detalhe: string; icone: typeof QrCode }> = [
+type OpcaoForma = { id: FormaPagamentoPedido; titulo: string; detalhe: string; icone: typeof QrCode }
+
+// Pagamento online (Mercado Pago)
+const FORMAS: OpcaoForma[] = [
   { id: "pix", titulo: "PIX", detalhe: "Aprovação na hora", icone: QrCode },
   { id: "credito", titulo: "Cartão de crédito", detalhe: "", icone: CreditCard },
   { id: "debito", titulo: "Cartão de débito", detalhe: "Débito online", icone: Wallet },
+]
+
+// Sem pagamento online: o cliente só informa como vai pagar na retirada/entrega
+const FORMAS_NA_ENTREGA: OpcaoForma[] = [
+  { id: "pix", titulo: "PIX", detalhe: "", icone: QrCode },
+  { id: "dinheiro", titulo: "Dinheiro", detalhe: "", icone: Banknote },
+  { id: "debito", titulo: "Cartão de débito", detalhe: "", icone: Wallet },
+  { id: "credito", titulo: "Cartão de crédito", detalhe: "", icone: CreditCard },
 ]
 
 function lerCliente() {
@@ -46,6 +60,7 @@ export default function CarrinhoCatalogoSheet({
   produtos,
   modo,
   config,
+  whatsappLoja,
   onAlterarQuantidade,
   onRemover,
   onPedidoCriado,
@@ -53,11 +68,14 @@ export default function CarrinhoCatalogoSheet({
   const [etapa, setEtapa] = useState<"carrinho" | "dados">("carrinho")
   const [cliente, setCliente] = useState(lerCliente)
   const [observacoes, setObservacoes] = useState("")
-  const [forma, setForma] = useState<FormaPagamentoOnline | null>(null)
+  const [forma, setForma] = useState<FormaPagamentoPedido | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
-  const formasAtivas = FORMAS.filter(f => config[f.id])
+  const pagamentoOnline = config.pagamento_online
+  const formasAtivas = pagamentoOnline
+    ? FORMAS.filter(f => f.id !== "dinheiro" && config[f.id])
+    : FORMAS_NA_ENTREGA
 
   useEffect(() => {
     if (!aberto) {
@@ -67,7 +85,7 @@ export default function CarrinhoCatalogoSheet({
   }, [aberto])
 
   useEffect(() => {
-    if (!forma && formasAtivas.length > 0) setForma(formasAtivas[0].id)
+    if ((!forma || !formasAtivas.some(f => f.id === forma)) && formasAtivas.length > 0) setForma(formasAtivas[0].id)
   }, [forma, formasAtivas])
 
   const linhas = useMemo(
@@ -93,13 +111,18 @@ export default function CarrinhoCatalogoSheet({
   const total = linhas.reduce((soma, l) => soma + l.total, 0)
   const faltaAtacado = modo === "atacado" ? Math.max(config.atacado_pedido_minimo - total, 0) : 0
   const excedeEstoque = linhas.some(l => l.disponivel !== null && l.item.quantidade > l.disponivel)
-  const podeAvancar = linhas.length > 0 && faltaAtacado <= 0 && !excedeEstoque
+  // Item que ficou sem preço online depois de ir para o carrinho
+  const temItemSemPreco = linhas.some(l => l.unitario <= 0)
+  const podeAvancar = linhas.length > 0 && faltaAtacado <= 0 && !excedeEstoque && !temItemSemPreco
 
   const telefoneDigitos = cliente.telefone.replace(/\D/g, "")
+  const email = cliente.email.trim()
+  const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)
   const dadosValidos =
     cliente.nome.trim().split(/\s+/).length >= 2 &&
     telefoneDigitos.length >= 10 &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cliente.email.trim()) &&
+    // E-mail é exigido pelo Mercado Pago; sem pagamento online é opcional
+    (pagamentoOnline ? emailValido : !email || emailValido) &&
     !!forma
 
   const finalizar = async (e: React.FormEvent) => {
@@ -107,6 +130,10 @@ export default function CarrinhoCatalogoSheet({
     if (!dadosValidos || !forma || enviando) return
     setEnviando(true)
     setErro(null)
+    // A aba do WhatsApp precisa ser aberta ainda dentro do clique (senão o
+    // navegador bloqueia); ela recebe a mensagem depois que o pedido é criado.
+    const enviarNoWhatsApp = !pagamentoOnline && linkWhatsAppLoja(whatsappLoja, "") !== null
+    const janelaWhatsApp = enviarNoWhatsApp ? window.open("", "_blank") : null
     try {
       try {
         localStorage.setItem(CHAVE_CLIENTE, JSON.stringify(cliente))
@@ -116,7 +143,7 @@ export default function CarrinhoCatalogoSheet({
       const pedido = await lojaOnlineService.criarPedido({
         tipo_venda: modo,
         forma_pagamento: forma,
-        cliente: { nome: cliente.nome.trim(), telefone: telefoneDigitos, email: cliente.email.trim() },
+        cliente: { nome: cliente.nome.trim(), telefone: telefoneDigitos, email: email || undefined },
         itens: linhas.map(l => ({
           produto_id: l.item.produtoId,
           variante_id: l.item.varianteId,
@@ -125,8 +152,14 @@ export default function CarrinhoCatalogoSheet({
         observacoes: observacoes.trim() || undefined,
       })
       onPedidoCriado()
-      window.location.href = pedido.checkout_url
+      if (pedido.resumo) {
+        salvarTelefoneLoja(whatsappLoja)
+        const link = linkWhatsAppLoja(whatsappLoja, montarMensagemPedido(pedido.resumo))
+        if (link && janelaWhatsApp && !janelaWhatsApp.closed) janelaWhatsApp.location.href = link
+      }
+      window.location.href = pedido.checkout_url ?? `/pedido/${pedido.pedido_id}`
     } catch (err) {
+      janelaWhatsApp?.close()
       setErro(err instanceof Error ? err.message : "Não foi possível criar o pedido.")
       setEnviando(false)
     }
@@ -155,7 +188,9 @@ export default function CarrinhoCatalogoSheet({
           <SheetDescription>
             {etapa === "carrinho"
               ? `${linhas.length} ${linhas.length === 1 ? "item" : "itens"}`
-              : "Informe seus dados e a forma de pagamento"}
+              : pagamentoOnline
+                ? "Informe seus dados e a forma de pagamento"
+                : "Informe seus dados e como prefere pagar"}
           </SheetDescription>
         </SheetHeader>
 
@@ -180,6 +215,11 @@ export default function CarrinhoCatalogoSheet({
                     <p className="font-semibold text-sm text-gray-900 leading-tight">{l.produto.nome}</p>
                     {l.item.varianteNome && <p className="text-xs text-gray-500">{l.item.varianteNome}</p>}
                     <p className="text-xs text-gray-500 mt-0.5">{formatarReais(l.unitario)} / un.</p>
+                    {l.unitario <= 0 && (
+                      <p className="text-xs text-red-600 font-medium mt-1" role="alert">
+                        Indisponível para pedido online. Remova este item.
+                      </p>
+                    )}
                     {l.disponivel !== null && l.item.quantidade > l.disponivel && (
                       <p className="text-xs text-red-600 font-medium mt-1" role="alert">
                         {l.disponivel > 0 ? `Só temos ${l.disponivel} em estoque.` : "Esgotado. Remova este item."}
@@ -276,7 +316,7 @@ export default function CarrinhoCatalogoSheet({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="cat-email">E-mail</Label>
+                <Label htmlFor="cat-email">E-mail{!pagamentoOnline && " (opcional)"}</Label>
                 <Input
                   id="cat-email"
                   type="email"
@@ -284,9 +324,11 @@ export default function CarrinhoCatalogoSheet({
                   value={cliente.email}
                   onChange={(e) => setCliente(c => ({ ...c, email: e.target.value }))}
                   maxLength={120}
-                  required
+                  required={pagamentoOnline}
                 />
-                <p className="text-xs text-gray-500">O comprovante do pagamento é enviado para este e-mail.</p>
+                {pagamentoOnline && (
+                  <p className="text-xs text-gray-500">O comprovante do pagamento é enviado para este e-mail.</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="cat-obs">Observações (opcional)</Label>
@@ -301,11 +343,13 @@ export default function CarrinhoCatalogoSheet({
               </div>
 
               <fieldset className="space-y-2">
-                <legend className="text-sm font-medium mb-2">Forma de pagamento</legend>
+                <legend className="text-sm font-medium mb-2">
+                  {pagamentoOnline ? "Forma de pagamento" : "Como prefere pagar na retirada/entrega?"}
+                </legend>
                 {formasAtivas.map(f => {
                   const Icone = f.icone
                   const detalhe =
-                    f.id === "credito"
+                    f.id === "credito" && pagamentoOnline
                       ? config.max_parcelas > 1
                         ? `Em até ${config.max_parcelas}x`
                         : "À vista"
@@ -353,14 +397,18 @@ export default function CarrinhoCatalogoSheet({
               >
                 {enviando ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" /> Gerando pagamento...
+                    <Loader2 className="h-5 w-5 animate-spin" /> {pagamentoOnline ? "Gerando pagamento..." : "Enviando pedido..."}
                   </>
-                ) : (
+                ) : pagamentoOnline ? (
                   "Ir para o pagamento"
+                ) : (
+                  "Enviar pedido"
                 )}
               </Button>
               <p className="text-xs text-center text-gray-500">
-                Você será levado ao ambiente seguro do Mercado Pago.
+                {pagamentoOnline
+                  ? "Você será levado ao ambiente seguro do Mercado Pago."
+                  : "Nada é cobrado agora. O pedido também é enviado para o WhatsApp da loja."}
               </p>
             </SheetFooter>
           </form>

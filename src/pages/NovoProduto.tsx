@@ -21,6 +21,7 @@ export default function NovoProduto() {
         preco: novoProduto.preco,
         preco_promocional: novoProduto.precoPromocional,
         preco_atacado: novoProduto.preco_atacado ?? null,
+        preco_online: novoProduto.preco_online ?? null,
         categoria_id: novoProduto.categoria_id,
         categoria_nome: novoProduto.categoria,
         imagem_path: novoProduto.urlImagem,

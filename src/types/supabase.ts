@@ -85,6 +85,8 @@ export interface ProdutoSupabase {
   preco: number
   preco_promocional?: number
   preco_atacado?: number | null
+  /** Preço no pedido online (catálogo); null = usa o preço do PDV */
+  preco_online?: number | null
   categoria_id?: string
   categoria_nome?: string
   imagem_path?: string
@@ -303,6 +305,12 @@ export interface PedidoSupabase {
   mercado_pago_payment_id?: string
   mercado_pago_status?: string
   mercado_pago_date_approved?: string
+
+  // Pedidos do catálogo (link de pedidos)
+  origem?: string
+  tipo_venda?: 'varejo' | 'atacado'
+  estoque_baixado?: boolean
+  estoque_alerta?: string | null
 
   // Campos de pagamento dividido
   forma_pagamento_dividido?: boolean

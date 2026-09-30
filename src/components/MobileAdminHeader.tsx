@@ -28,8 +28,7 @@ import {
   Palette,
   UserCog,
   TrendingUp,
-  ClipboardList,
-  Plug
+  ClipboardList
 } from "lucide-react"
 import { configuracaoService } from "@/services"
 import { usePermissoes } from "@/hooks/usePermissoes"
@@ -84,7 +83,6 @@ const menuItems: MenuItem[] = [
       { name: "Informações Gerais", id: "configuracoes-gerais", icon: Info },
       { name: "Horários", id: "configuracoes-horario", icon: Clock },
       { name: "Pagamentos", id: "configuracoes-pagamento", icon: CreditCard },
-      { name: "Integração de Pagamentos", id: "configuracoes-integracoes", icon: Plug },
       { name: "Aparência", id: "configuracoes-visuais", icon: Palette }
     ]
   },

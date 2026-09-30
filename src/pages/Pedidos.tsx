@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { ChefHat, CheckCircle, Truck, Package } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import { getEstabelecimentoAtivo } from "@/services"
+import { getEstabelecimentoAtivo, pedidoDeliveryService } from "@/services"
 import { clienteService } from "@/lib/clienteService"
 import { DragDropContext } from '@hello-pangea/dnd'
 import { useNotificacao } from "@/hooks/useNotificacao"
@@ -277,7 +277,7 @@ export default function Pedidos() {
       // Buscar dados do pedido antes de cancelar (para decrementar estatísticas)
       const { data: pedido, error: pedidoError } = await supabase
         .from('pedidos')
-        .select('cliente_id, total')
+        .select('id, cliente_id, total, estoque_baixado')
         .eq('pedido_id', pedidoId)
         .single()
 
@@ -299,6 +299,17 @@ export default function Pedidos() {
 
       if (error) throw error
 
+      // Pedido já estava em "Prontos p/ Entrega" (ou pago online): devolve o estoque
+      let avisoEstoque = ''
+      if (pedido?.estoque_baixado) {
+        try {
+          await pedidoDeliveryService.estornarEstoque(pedido.id)
+        } catch (estornoError) {
+          console.error('Erro ao devolver estoque do pedido cancelado:', estornoError)
+          avisoEstoque = ' Atenção: não foi possível devolver os itens ao estoque. Ajuste pela tela de Entrada / Saída.'
+        }
+      }
+
       // Decrementar estatísticas do cliente (se houver cliente_id)
       if (pedido?.cliente_id && pedido?.total) {
         try {
@@ -312,7 +323,11 @@ export default function Pedidos() {
       // Recarregar pedidos
       await carregarPedidos()
 
-      setMensagemResultado('Pedido cancelado com sucesso!')
+      setMensagemResultado(
+        pedido?.estoque_baixado && !avisoEstoque
+          ? 'Pedido cancelado com sucesso! Os itens voltaram para o estoque.'
+          : `Pedido cancelado com sucesso!${avisoEstoque}`
+      )
       setTipoResultado('sucesso')
       setDialogResultadoAberto(true)
     } catch (error) {
