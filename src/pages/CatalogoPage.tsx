@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import toast from "react-hot-toast"
 import Footer from "@/components/Footer"
 import CookieConsent from "@/components/CookieConsent"
@@ -14,7 +14,10 @@ import { lojaOnlineService, CONFIG_PUBLICA_PADRAO, type ConfigCatalogoPublica } 
 import { useCarrinhoCatalogo, chaveItem, type ItemCarrinhoCatalogo } from "@/hooks/useCarrinhoCatalogo"
 import SeletorModoVenda from "@/components/catalogo/SeletorModoVenda"
 import CarrinhoCatalogoSheet from "@/components/catalogo/CarrinhoCatalogoSheet"
+import BuscaCatalogo, { normalizarBusca } from "@/components/catalogo/BuscaCatalogo"
 import { formatarReais, precoUnitario } from "@/components/catalogo/precos"
+import OrdenacaoCatalogo, { ordenarProdutos, type Ordenacao } from "@/components/catalogo/OrdenacaoCatalogo"
+import { useFlipAnimation } from "@/hooks/useFlipAnimation"
 import { Info, ShoppingCart } from "lucide-react"
 
 export default function CatalogoPage() {
@@ -26,6 +29,11 @@ export default function CatalogoPage() {
   const [produtos, setProdutos] = useState<ProdutoCatalogo[]>([])
   const [categorias, setCategorias] = useState<CategoriaSupabase[]>([])
   const [categoriaAtiva, setCategoriaAtiva] = useState('todos')
+  const [termoBusca, setTermoBusca] = useState('')
+  const [ordenacao, setOrdenacao] = useState<Ordenacao>('mais-vendidos')
+  const [vendasPorProduto, setVendasPorProduto] = useState<Map<string, number>>(new Map())
+  const gradeRef = useRef<HTMLDivElement>(null)
+  const capturarPosicoes = useFlipAnimation(gradeRef, ordenacao)
   const [configuracao, setConfiguracao] = useState({
     nomeEstabelecimento: 'KOBE E-Commerce',
     logoUrl: '',
@@ -100,7 +108,7 @@ export default function CatalogoPage() {
 
       // Variantes (cor, tamanho...) e configuração da loja online
       const stockIds = [...estoqueMap.values()].map(e => e.id)
-      const [variantesResult, configLoja, reservadoResult] = await Promise.all([
+      const [variantesResult, configLoja, reservadoResult, vendidosResult] = await Promise.all([
         stockIds.length > 0
           ? supabase
               .from('stock_variants')
@@ -110,8 +118,17 @@ export default function CatalogoPage() {
           : Promise.resolve({ data: [], error: null }),
         lojaOnlineService.buscarConfigPublica(),
         // Itens de pedidos em aberto (ainda não baixados) seguram o estoque
-        supabase.rpc('catalogo_estoque_reservado')
+        supabase.rpc('catalogo_estoque_reservado'),
+        // Ranking de "Mais vendidos" (só quantidades agregadas por produto)
+        supabase.rpc('catalogo_mais_vendidos')
       ])
+      if (vendidosResult.error) {
+        console.warn('⚠️ Erro ao buscar mais vendidos:', vendidosResult.error)
+      }
+      setVendasPorProduto(new Map(
+        ((vendidosResult.data as Array<{ produto_id: string; quantidade: number }> | null) || [])
+          .map(v => [v.produto_id, Number(v.quantidade) || 0])
+      ))
       if (reservadoResult.error) {
         console.warn('⚠️ Erro ao buscar estoque reservado:', reservadoResult.error)
       }
@@ -249,10 +266,25 @@ export default function CatalogoPage() {
     [carrinho.itens, produtoSelecionado]
   )
 
+  // Filtrar produtos pelo nome digitado (sem acento / caixa)
+  const termoNormalizado = normalizarBusca(termoBusca)
+  // Busca + ordenação (a ordem se mantém nos filtros e agrupamentos abaixo)
+  const produtosBuscados = useMemo(() => {
+    const encontrados = termoNormalizado
+      ? produtos.filter(p => normalizarBusca(p.nome).includes(termoNormalizado))
+      : produtos
+    return ordenarProdutos(encontrados, ordenacao, modo, vendasPorProduto)
+  }, [produtos, termoNormalizado, ordenacao, modo, vendasPorProduto])
+
+  const handleMudarOrdenacao = (nova: Ordenacao) => {
+    capturarPosicoes() // guarda onde cada card está para animar até a nova posição
+    setOrdenacao(nova)
+  }
+
   // Filtrar produtos por categoria
   const produtosFiltrados = categoriaAtiva === 'todos'
-    ? produtos
-    : produtos.filter(p => {
+    ? produtosBuscados
+    : produtosBuscados.filter(p => {
         // Buscar nome da categoria pelo ID
         const categoria = categorias.find(c => c.id === categoriaAtiva)
         return categoria ? p.categoria.toLowerCase() === categoria.nome.toLowerCase() : false
@@ -260,7 +292,7 @@ export default function CatalogoPage() {
 
   // Agrupar produtos por categoria
   const produtosAgrupados = categorias.reduce((acc, cat) => {
-    const produtosCategoria = produtos.filter(p => 
+    const produtosCategoria = produtosBuscados.filter(p => 
       p.categoria.toLowerCase() === cat.nome.toLowerCase()
     )
     if (produtosCategoria.length > 0) {
@@ -324,6 +356,15 @@ export default function CatalogoPage() {
           />
         )}
 
+        {/* Busca por nome + categoria */}
+        <BuscaCatalogo
+          termo={termoBusca}
+          onTermoChange={setTermoBusca}
+          categorias={categorias}
+          categoriaAtiva={categoriaAtiva}
+          onCategoriaChange={setCategoriaAtiva}
+        />
+
         {/* Filtro de Categorias */}
         <FiltroCategorias
           categorias={categorias}
@@ -331,6 +372,10 @@ export default function CatalogoPage() {
           onCategoriaChange={setCategoriaAtiva}
         />
 
+        {/* Ordenação */}
+        <OrdenacaoCatalogo valor={ordenacao} onMudar={handleMudarOrdenacao} />
+
+        <div ref={gradeRef}>
         {/* Loading */}
         {loading && <ProdutoCardSkeletonGrid count={6} />}
 
@@ -347,12 +392,13 @@ export default function CatalogoPage() {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {produtosCategoria.map(produto => (
-                    <CatalogoProdutoCard
-                      key={produto.id}
-                      produto={produto}
-                      onAbrirDetalhes={handleAbrirDetalhes}
-                      modoVenda={pedidosAtivos ? modo : undefined}
-                    />
+                    <div key={produto.id} data-flip-id={produto.id} className="grid">
+                      <CatalogoProdutoCard
+                        produto={produto}
+                        onAbrirDetalhes={handleAbrirDetalhes}
+                        modoVenda={pedidosAtivos ? modo : undefined}
+                      />
+                    </div>
                   ))}
                 </div>
               </section>
@@ -371,12 +417,13 @@ export default function CatalogoPage() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {produtosFiltrados.map(produto => (
-                <CatalogoProdutoCard
-                  key={produto.id}
-                  produto={produto}
-                  onAbrirDetalhes={handleAbrirDetalhes}
-                  modoVenda={pedidosAtivos ? modo : undefined}
-                />
+                <div key={produto.id} data-flip-id={produto.id} className="grid">
+                  <CatalogoProdutoCard
+                    produto={produto}
+                    onAbrirDetalhes={handleAbrirDetalhes}
+                    modoVenda={pedidosAtivos ? modo : undefined}
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -385,9 +432,14 @@ export default function CatalogoPage() {
         {/* Mensagem vazia */}
         {!loading && produtosFiltrados.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">Nenhum produto encontrado nesta categoria.</p>
+            <p className="text-gray-500 text-lg">
+              {termoNormalizado
+                ? `Nenhum produto encontrado para "${termoBusca.trim()}".`
+                : 'Nenhum produto encontrado nesta categoria.'}
+            </p>
           </div>
         )}
+        </div>
       </main>
 
       {/* Footer */}

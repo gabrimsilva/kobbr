@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useParams } from "react-router-dom"
+import { useParams, useSearchParams } from "react-router-dom"
 import { CheckCircle2, Clock, Loader2, XCircle, ArrowLeft, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { lojaOnlineService, type StatusPedidoCatalogo } from "@/services/lojaOnlineService"
+import { configuracaoService } from "@/services"
 import { formatarReais } from "@/components/catalogo/precos"
-import { lerTelefoneLoja, linkWhatsAppLoja, montarMensagemPedido } from "@/components/catalogo/whatsappPedido"
+import {
+  lerTelefoneLoja,
+  linkWhatsAppLoja,
+  montarMensagemPedido,
+  salvarTelefoneLoja,
+} from "@/components/catalogo/whatsappPedido"
 
 const INTERVALO_MS = 5000
 const MAX_TENTATIVAS = 36 // ~3 minutos aguardando o PIX / aprovação
@@ -40,6 +46,28 @@ export default function PedidoCatalogoStatus() {
   const [pedido, setPedido] = useState<StatusPedidoCatalogo | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const tentativas = useRef(0)
+  // ?whatsapp=1: o WhatsApp não abriu sozinho no checkout (celular) → destacar o envio
+  const [searchParams] = useSearchParams()
+  const destacarWhatsApp = searchParams.get("whatsapp") === "1"
+  // Número da loja: do navegador ou, se o cliente voltou do Mercado Pago em
+  // outro navegador (app do MP, Instagram...), direto das configurações
+  const [telefoneLoja, setTelefoneLoja] = useState(lerTelefoneLoja)
+
+  useEffect(() => {
+    if (telefoneLoja) return
+    let ativo = true
+    configuracaoService
+      .buscarPorChave("telefone")
+      .then(cfg => {
+        const tel = cfg?.valor?.trim() || ""
+        if (ativo && tel) {
+          salvarTelefoneLoja(tel)
+          setTelefoneLoja(tel)
+        }
+      })
+      .catch(() => { /* sem número: o botão não aparece */ })
+    return () => { ativo = false }
+  }, [telefoneLoja])
 
   const consultar = useCallback(async () => {
     if (!pedidoId) return
@@ -97,7 +125,7 @@ export default function PedidoCatalogoStatus() {
   const linkWhatsApp =
     situacao === "recebido" || situacao === "aprovado"
       ? linkWhatsAppLoja(
-          lerTelefoneLoja(),
+          telefoneLoja,
           montarMensagemPedido({
             ...pedido,
             itens: pedido.itens.map(i => ({ nome: i.nome, quantidade: i.quantidade, subtotal: i.subtotal })),
@@ -108,12 +136,14 @@ export default function PedidoCatalogoStatus() {
     recebido: {
       icone: <CheckCircle2 className="h-14 w-14 text-green-600" />,
       titulo: "Pedido enviado!",
-      texto: "Recebemos seu pedido. Se o WhatsApp não abriu, toque no botão abaixo para enviar o resumo para a loja. O pagamento é feito na retirada/entrega.",
+      texto: destacarWhatsApp
+        ? "Recebemos seu pedido. O pagamento é feito na retirada/entrega."
+        : "Recebemos seu pedido. Se o WhatsApp não abriu, toque no botão abaixo para enviar o resumo para a loja. O pagamento é feito na retirada/entrega.",
     },
     aprovado: {
       icone: <CheckCircle2 className="h-14 w-14 text-green-600" />,
       titulo: "Pagamento aprovado!",
-      texto: "Recebemos seu pedido e já vamos separar. Você receberá o contato da loja pelo WhatsApp.",
+      texto: "Recebemos seu pedido e já vamos separar. Envie o resumo para a loja pelo botão do WhatsApp abaixo.",
     },
     aguardando: {
       icone: <Clock className="h-14 w-14 text-amber-500" />,
@@ -142,6 +172,22 @@ export default function PedidoCatalogoStatus() {
           <div className="flex justify-center mb-3">{cabecalho.icone}</div>
           <h1 className="text-2xl font-bold text-gray-900">{cabecalho.titulo}</h1>
           <p className="text-sm text-gray-600 mt-2" role="status">{cabecalho.texto}</p>
+          {linkWhatsApp && (destacarWhatsApp || situacao === "aprovado") && (
+            <div className="mt-4 rounded-xl border-2 border-green-500 bg-green-50 p-4 text-left">
+              <p className="font-semibold text-green-900">Falta 1 passo: envie o pedido para a loja</p>
+              <p className="text-sm text-green-800 mt-1">
+                Toque no botão abaixo, o WhatsApp abre com o resumo pronto. É só tocar em enviar.
+              </p>
+              <Button
+                asChild
+                className="w-full h-12 mt-3 text-base font-semibold bg-green-600 hover:bg-green-700 text-white"
+              >
+                <a href={linkWhatsApp} target="_blank" rel="noopener noreferrer">
+                  <MessageCircle className="h-5 w-5" /> Enviar pedido pelo WhatsApp
+                </a>
+              </Button>
+            </div>
+          )}
           <p className="mt-4 text-sm text-gray-500">
             Pedido <strong className="text-gray-900 font-mono">#{pedido.codigo_pedido}</strong>
             {" · "}{pedido.tipo_venda === "atacado" ? "Atacado" : "Varejo"}
@@ -166,7 +212,7 @@ export default function PedidoCatalogoStatus() {
         </div>
 
         <div className="p-6 space-y-3">
-          {linkWhatsApp && (
+          {linkWhatsApp && !(destacarWhatsApp || situacao === "aprovado") && (
             <Button
               asChild
               className="w-full h-12 text-base font-semibold bg-green-600 hover:bg-green-700 text-white"

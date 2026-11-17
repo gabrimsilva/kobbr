@@ -60,6 +60,8 @@ export function lerTelefoneLoja(): string {
 export function linkWhatsAppLoja(telefone: string, mensagem: string): string | null {
   let digitos = telefone.replace(/\D/g, "")
   if (digitos.startsWith("55") && digitos.length > 11) digitos = digitos.slice(2)
-  if (digitos.length < 10) return null
+  // Prefixo de operadora/discagem: "0 41 99999-9999" ou "041 99999-9999"
+  digitos = digitos.replace(/^0+/, "")
+  if (digitos.length < 10 || digitos.length > 11) return null
   return `https://wa.me/55${digitos}?text=${encodeURIComponent(mensagem)}`
 }

@@ -10,6 +10,7 @@ import { disponivelParaCompra, formatarReais, precoUnitario } from "./precos"
 import { lojaOnlineService, type ConfigCatalogoPublica, type FormaPagamentoPedido, type TipoVenda } from "@/services/lojaOnlineService"
 import { formatarTelefone } from "@/utils/formatacao"
 import { linkWhatsAppLoja, montarMensagemPedido, salvarTelefoneLoja } from "./whatsappPedido"
+import { isMobile } from "@/lib/whatsapp"
 
 const CHAVE_CLIENTE = "kobe_cliente_catalogo"
 
@@ -130,10 +131,12 @@ export default function CarrinhoCatalogoSheet({
     if (!dadosValidos || !forma || enviando) return
     setEnviando(true)
     setErro(null)
-    // A aba do WhatsApp precisa ser aberta ainda dentro do clique (senão o
-    // navegador bloqueia); ela recebe a mensagem depois que o pedido é criado.
+    // No computador a aba do WhatsApp é aberta ainda dentro do clique (senão o
+    // navegador bloqueia) e recebe a mensagem depois que o pedido é criado.
+    // No celular (Safari, navegador do Instagram/Facebook) essa aba em branco é
+    // bloqueada ou não abre o app: o cliente envia pelo botão da página do pedido.
     const enviarNoWhatsApp = !pagamentoOnline && linkWhatsAppLoja(whatsappLoja, "") !== null
-    const janelaWhatsApp = enviarNoWhatsApp ? window.open("", "_blank") : null
+    const janelaWhatsApp = enviarNoWhatsApp && !isMobile() ? window.open("", "_blank") : null
     try {
       try {
         localStorage.setItem(CHAVE_CLIENTE, JSON.stringify(cliente))
@@ -152,12 +155,19 @@ export default function CarrinhoCatalogoSheet({
         observacoes: observacoes.trim() || undefined,
       })
       onPedidoCriado()
+      salvarTelefoneLoja(whatsappLoja)
+      let whatsappAberto = false
       if (pedido.resumo) {
-        salvarTelefoneLoja(whatsappLoja)
         const link = linkWhatsAppLoja(whatsappLoja, montarMensagemPedido(pedido.resumo))
-        if (link && janelaWhatsApp && !janelaWhatsApp.closed) janelaWhatsApp.location.href = link
+        if (link && janelaWhatsApp && !janelaWhatsApp.closed) {
+          janelaWhatsApp.location.href = link
+          whatsappAberto = true
+        }
       }
-      window.location.href = pedido.checkout_url ?? `/pedido/${pedido.pedido_id}`
+      if (!whatsappAberto) janelaWhatsApp?.close()
+      // ?whatsapp=1 → a página do pedido destaca o botão de enviar para a loja
+      window.location.href =
+        pedido.checkout_url ?? `/pedido/${pedido.pedido_id}${whatsappAberto ? "" : "?whatsapp=1"}`
     } catch (err) {
       janelaWhatsApp?.close()
       setErro(err instanceof Error ? err.message : "Não foi possível criar o pedido.")
