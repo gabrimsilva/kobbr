@@ -79,6 +79,8 @@ export default function CatalogoPage() {
         .from('categorias')
         .select('*')
         .eq('ativa', true)
+        // Mesma ordem definida em Configurações > Categorias
+        .order('ordem', { ascending: true, nullsFirst: false })
         .order('nome', { ascending: true })
 
       if (categoriasError) {
