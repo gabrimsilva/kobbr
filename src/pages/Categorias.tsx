@@ -49,14 +49,14 @@ export default function Categorias() {
     try {
       setSaving(true)
       setError(null)
-      
+
       // Verificar itens vinculados antes de excluir
       const itens = await categoriaService.contarItensVinculados(categoria.id)
       if (itens.total > 0) {
         setError(`Não é possível excluir esta categoria pois existem ${itens.total} itens vinculados.`)
         return
       }
-      
+
       await categoriaService.excluir(categoria.id)
       await carregarCategorias()
     } catch (err) {
@@ -87,7 +87,7 @@ export default function Categorias() {
   const categoriasFiltradas = categorias.filter(categoria =>
     categoria.nome.toLowerCase().includes(termoBusca.toLowerCase()) ||
     categoria.descricao.toLowerCase().includes(termoBusca.toLowerCase())
-  ).sort((a, b) => a.ordem - b.ordem)
+  ).sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome))
 
   const getStatusColor = (ativa: boolean) => {
     return ativa ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
@@ -196,7 +196,7 @@ export default function Categorias() {
                 {/* Nome da categoria */}
                 <div className="mb-3">
                   <h3 className="font-semibold text-lg text-gray-900 mb-2">{categoria.nome}</h3>
-                  
+
                   {/* Badges - Desktop: inline, Mobile: wrap */}
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className={`text-xs font-medium px-2 py-1 rounded ${getStatusColor(categoria.ativa)}`}>
